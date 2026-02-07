@@ -192,21 +192,47 @@ struct CalendarExerciseCard: View {
                 // Lista Integrale degli Esercizi (Mostra tutti)
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(session.exercises) { ex in
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.acidGreen.opacity(0.6))
-                                .padding(.top, 2)
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(ex.name.uppercased())
-                                    .font(.system(size: 12, weight: .black))
-                                    .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.acidGreen.opacity(0.6))
+                                    .padding(.top, 2)
                                 
-                                // Dettaglio set eseguiti
-                                Text(ex.sets.map { "\($0.reps)\(ex.isBodyweight ? "" : "x\($0.weight)kg")" }.joined(separator: " • "))
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.5))
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(ex.name.uppercased())
+                                        .font(.system(size: 12, weight: .black))
+                                        .foregroundColor(.white)
+                                    
+                                    // Dettaglio set eseguiti
+                                    Text(ex.sets.map { "\($0.reps)\(ex.isBodyweight ? "" : "x\($0.weight)kg")" }.joined(separator: " • "))
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
+                            }
+                            
+                            // Note dell'esercizio
+                            if !ex.exerciseNotes.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "note.text")
+                                        .font(.system(size: 8))
+                                    Text(ex.exerciseNotes)
+                                        .font(.system(size: 9, weight: .medium))
+                                }
+                                .foregroundColor(.acidGreen.opacity(0.7))
+                                .padding(.leading, 20)
+                            }
+                            
+                            // Note delle singole serie
+                            ForEach(ex.sets.filter { $0.setNotes != nil && !($0.setNotes?.isEmpty ?? true) }) { set in
+                                HStack(spacing: 6) {
+                                    Image(systemName: "text.bubble")
+                                        .font(.system(size: 8))
+                                    Text("Serie \(set.setIndex + 1): \(set.setNotes ?? "")")
+                                        .font(.system(size: 9, weight: .medium))
+                                }
+                                .foregroundColor(.white.opacity(0.5))
+                                .padding(.leading, 20)
                             }
                         }
                     }
