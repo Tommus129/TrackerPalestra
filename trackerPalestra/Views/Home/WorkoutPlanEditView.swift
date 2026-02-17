@@ -7,7 +7,7 @@ struct WorkoutPlanEditView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background più scuro con gradient sottile
+                // Background scuro
                 Color.black
                     .ignoresSafeArea()
                 
@@ -34,7 +34,7 @@ struct WorkoutPlanEditView: View {
                         } header: {
                             HStack(spacing: 8) {
                                 Image(systemName: "doc.text.fill")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 13, weight: .black))
                                 Text("NOME SCHEDA")
                                     .font(.system(size: 12, weight: .black))
                                     .tracking(1.5)
@@ -47,8 +47,8 @@ struct WorkoutPlanEditView: View {
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.deepPurple.opacity(0.25),
-                                            Color.deepPurple.opacity(0.15)
+                                            Color.deepPurple.opacity(0.4),
+                                            Color.deepPurple.opacity(0.3)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -58,14 +58,14 @@ struct WorkoutPlanEditView: View {
                                     RoundedRectangle(cornerRadius: 16)
                                         .stroke(
                                             LinearGradient(
-                                                colors: [Color.acidGreen.opacity(0.3), Color.acidGreen.opacity(0.1)],
+                                                colors: [Color.acidGreen.opacity(0.7), Color.acidGreen.opacity(0.4)],
                                                 startPoint: .topLeading,
                                                 endPoint: .bottomTrailing
                                             ),
-                                            lineWidth: 1.5
+                                            lineWidth: 2.5
                                         )
                                 )
-                                .shadow(color: Color.deepPurple.opacity(0.3), radius: 10, y: 5)
+                                .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
                         )
                         .listRowSeparator(.hidden)
 
@@ -75,35 +75,35 @@ struct WorkoutPlanEditView: View {
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
                                     HStack(spacing: 16) {
-                                        // Badge numero giorno con gradient premium
+                                        // Badge numero giorno MOLTO più visibile
                                         ZStack {
                                             Circle()
                                                 .fill(
                                                     LinearGradient(
                                                         colors: [
-                                                            Color.acidGreen.opacity(0.4),
-                                                            Color.acidGreen.opacity(0.2)
+                                                            Color.acidGreen.opacity(0.5),
+                                                            Color.acidGreen.opacity(0.35)
                                                         ],
                                                         startPoint: .topLeading,
                                                         endPoint: .bottomTrailing
                                                     )
                                                 )
-                                                .frame(width: 48, height: 48)
+                                                .frame(width: 52, height: 52)
                                                 .overlay(
                                                     Circle()
                                                         .stroke(
                                                             LinearGradient(
-                                                                colors: [Color.acidGreen.opacity(0.6), Color.acidGreen.opacity(0.3)],
+                                                                colors: [Color.acidGreen.opacity(0.8), Color.acidGreen.opacity(0.5)],
                                                                 startPoint: .top,
                                                                 endPoint: .bottom
                                                             ),
-                                                            lineWidth: 2
+                                                            lineWidth: 2.5
                                                         )
                                                 )
-                                                .shadow(color: Color.acidGreen.opacity(0.3), radius: 8, y: 4)
+                                                .shadow(color: Color.acidGreen.opacity(0.5), radius: 10, y: 5)
                                             
                                             Text("\(dayNumber(for: day.id))")
-                                                .font(.system(size: 18, weight: .black))
+                                                .font(.system(size: 20, weight: .black))
                                                 .foregroundColor(.acidGreen)
                                         }
                                         
@@ -114,29 +114,29 @@ struct WorkoutPlanEditView: View {
                                             
                                             HStack(spacing: 6) {
                                                 Image(systemName: "figure.run")
-                                                    .font(.system(size: 11, weight: .medium))
+                                                    .font(.system(size: 12, weight: .bold))
                                                 Text("\(day.exercises.count) esercizi")
-                                                    .font(.system(size: 13, weight: .medium))
+                                                    .font(.system(size: 14, weight: .semibold))
                                             }
-                                            .foregroundColor(.white.opacity(0.5))
+                                            .foregroundColor(.white.opacity(0.6))
                                         }
                                         
                                         Spacer()
                                         
                                         Image(systemName: "chevron.right")
-                                            .font(.system(size: 14, weight: .bold))
-                                            .foregroundColor(.acidGreen.opacity(0.5))
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundColor(.acidGreen.opacity(0.6))
                                     }
                                     .padding(.vertical, 12)
                                 }
                                 .listRowBackground(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color.white.opacity(0.03))
+                                        .fill(Color.white.opacity(0.08))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                                .stroke(Color.white.opacity(0.25), lineWidth: 2)
                                         )
-                                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
+                                        .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                                 )
                                 .listRowSeparator(.hidden)
                                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -153,13 +153,13 @@ struct WorkoutPlanEditView: View {
                             } label: {
                                 HStack(spacing: 12) {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 22))
+                                        .font(.system(size: 24))
                                     Text("Aggiungi Giorno")
-                                        .font(.system(size: 16, weight: .bold))
+                                        .font(.system(size: 17, weight: .black))
                                 }
                                 .frame(maxWidth: .infinity)
                                 .foregroundColor(.black)
-                                .padding(.vertical, 16)
+                                .padding(.vertical, 17)
                                 .background(
                                     RoundedRectangle(cornerRadius: 16)
                                         .fill(
@@ -169,7 +169,7 @@ struct WorkoutPlanEditView: View {
                                                 endPoint: .bottomTrailing
                                             )
                                         )
-                                        .shadow(color: Color.acidGreen.opacity(0.4), radius: 12, y: 6)
+                                        .shadow(color: Color.acidGreen.opacity(0.6), radius: 14, y: 7)
                                 )
                             }
                             .listRowBackground(Color.clear)
@@ -178,7 +178,7 @@ struct WorkoutPlanEditView: View {
                         } header: {
                             HStack(spacing: 8) {
                                 Image(systemName: "calendar.badge.clock")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 13, weight: .black))
                                 Text("GIORNI DI ALLENAMENTO")
                                     .font(.system(size: 12, weight: .black))
                                     .tracking(1.5)
@@ -211,7 +211,7 @@ struct WorkoutPlanEditView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
+                                .font(.system(size: 19))
                             Text("Annulla")
                                 .font(.system(size: 16, weight: .semibold))
                         }
@@ -229,7 +229,7 @@ struct WorkoutPlanEditView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 18))
+                                .font(.system(size: 19))
                             Text("Salva")
                                 .font(.system(size: 16, weight: .black))
                         }
