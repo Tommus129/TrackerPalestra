@@ -65,14 +65,7 @@ struct DayDetailView: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [Color.acidGreen.opacity(0.7), Color.acidGreen.opacity(0.4)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 2.5
-                                )
+                                .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                         )
                         .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
                 )
@@ -96,7 +89,7 @@ struct DayDetailView: View {
                         .fill(Color.white.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                         )
                         .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                 )
@@ -113,7 +106,7 @@ struct DayDetailView: View {
                         .fill(Color.white.opacity(0.06))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
                 .listRowSeparator(.hidden)
@@ -158,7 +151,7 @@ struct DayDetailView: View {
                     .frame(width: 50, height: 50)
                     .overlay(
                         Circle()
-                            .stroke(
+                            .strokeBorder(
                                 exercise.isBodyweight ? 
                                     Color.acidGreen.opacity(0.9) : 
                                     Color.white.opacity(0.5),
@@ -203,7 +196,7 @@ struct DayDetailView: View {
                             .fill(Color.acidGreen.opacity(0.2))
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.acidGreen.opacity(0.6), lineWidth: 2)
+                                    .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                             )
                     )
                     
@@ -247,7 +240,7 @@ struct DayDetailView: View {
                         .fill(Color.white.opacity(0.12))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                                .strokeBorder(Color.white.opacity(0.3), lineWidth: 2)
                         )
                 )
             
@@ -266,7 +259,7 @@ struct DayDetailView: View {
                         .fill(Color.white.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
                 .lineLimit(2...4)
@@ -291,7 +284,7 @@ struct DayDetailView: View {
                             .frame(width: 36, height: 36)
                             .overlay(
                                 Circle()
-                                    .stroke(
+                                    .strokeBorder(
                                         newExerciseIsBodyweight ? 
                                             Color.acidGreen.opacity(0.7) : 
                                             Color.white.opacity(0.3),
@@ -341,7 +334,7 @@ struct DayDetailView: View {
                                     )
                                     .overlay(
                                         Capsule()
-                                            .stroke(Color.acidGreen.opacity(0.6), lineWidth: 2)
+                                            .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                                     )
                                     .shadow(color: Color.acidGreen.opacity(0.4), radius: 8, y: 4)
                             )
@@ -367,7 +360,7 @@ struct DayDetailView: View {
                             .fill(Color.white.opacity(0.1))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                                    .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
             }
@@ -387,7 +380,7 @@ struct DayDetailView: View {
                             .fill(Color.white.opacity(0.1))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                                    .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
             }
@@ -431,7 +424,7 @@ struct DayDetailView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(
+                    .strokeBorder(
                         newExerciseName.isEmpty ? 
                             Color.white.opacity(0.3) : 
                             Color.clear,
