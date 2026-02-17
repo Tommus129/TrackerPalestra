@@ -7,11 +7,18 @@ struct WorkoutPlanEditView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background gradient
+                // Background più scuro con gradient sottile
+                Color.black
+                    .ignoresSafeArea()
+                
                 LinearGradient(
-                    colors: [Color.customBlack, Color.deepPurple.opacity(0.3)],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    colors: [
+                        Color.black,
+                        Color.deepPurple.opacity(0.15),
+                        Color.black
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
                 
@@ -37,11 +44,28 @@ struct WorkoutPlanEditView: View {
                         }
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.deepPurple.opacity(0.2))
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.deepPurple.opacity(0.25),
+                                            Color.deepPurple.opacity(0.15)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color.acidGreen.opacity(0.2), lineWidth: 1)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [Color.acidGreen.opacity(0.3), Color.acidGreen.opacity(0.1)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1.5
+                                        )
                                 )
+                                .shadow(color: Color.deepPurple.opacity(0.3), radius: 10, y: 5)
                         )
                         .listRowSeparator(.hidden)
 
@@ -51,30 +75,41 @@ struct WorkoutPlanEditView: View {
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
                                     HStack(spacing: 16) {
-                                        // Badge numero giorno con gradient
+                                        // Badge numero giorno con gradient premium
                                         ZStack {
                                             Circle()
                                                 .fill(
                                                     LinearGradient(
-                                                        colors: [Color.acidGreen.opacity(0.3), Color.acidGreen.opacity(0.15)],
+                                                        colors: [
+                                                            Color.acidGreen.opacity(0.4),
+                                                            Color.acidGreen.opacity(0.2)
+                                                        ],
                                                         startPoint: .topLeading,
                                                         endPoint: .bottomTrailing
                                                     )
                                                 )
-                                                .frame(width: 44, height: 44)
+                                                .frame(width: 48, height: 48)
                                                 .overlay(
                                                     Circle()
-                                                        .stroke(Color.acidGreen.opacity(0.4), lineWidth: 2)
+                                                        .stroke(
+                                                            LinearGradient(
+                                                                colors: [Color.acidGreen.opacity(0.6), Color.acidGreen.opacity(0.3)],
+                                                                startPoint: .top,
+                                                                endPoint: .bottom
+                                                            ),
+                                                            lineWidth: 2
+                                                        )
                                                 )
+                                                .shadow(color: Color.acidGreen.opacity(0.3), radius: 8, y: 4)
                                             
                                             Text("\(dayNumber(for: day.id))")
-                                                .font(.system(size: 16, weight: .black))
+                                                .font(.system(size: 18, weight: .black))
                                                 .foregroundColor(.acidGreen)
                                         }
                                         
                                         VStack(alignment: .leading, spacing: 6) {
                                             Text(day.label)
-                                                .font(.system(size: 16, weight: .bold))
+                                                .font(.system(size: 17, weight: .bold))
                                                 .foregroundColor(.white)
                                             
                                             HStack(spacing: 6) {
@@ -83,24 +118,25 @@ struct WorkoutPlanEditView: View {
                                                 Text("\(day.exercises.count) esercizi")
                                                     .font(.system(size: 13, weight: .medium))
                                             }
-                                            .foregroundColor(.white.opacity(0.6))
+                                            .foregroundColor(.white.opacity(0.5))
                                         }
                                         
                                         Spacer()
                                         
                                         Image(systemName: "chevron.right")
                                             .font(.system(size: 14, weight: .bold))
-                                            .foregroundColor(.acidGreen.opacity(0.6))
+                                            .foregroundColor(.acidGreen.opacity(0.5))
                                     }
-                                    .padding(.vertical, 10)
+                                    .padding(.vertical, 12)
                                 }
                                 .listRowBackground(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.white.opacity(0.06))
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color.white.opacity(0.03))
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 14)
-                                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
                                         )
+                                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                                 )
                                 .listRowSeparator(.hidden)
                                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -122,18 +158,18 @@ struct WorkoutPlanEditView: View {
                                         .font(.system(size: 16, weight: .bold))
                                 }
                                 .frame(maxWidth: .infinity)
-                                .foregroundColor(.customBlack)
-                                .padding(.vertical, 14)
+                                .foregroundColor(.black)
+                                .padding(.vertical, 16)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 14)
+                                    RoundedRectangle(cornerRadius: 16)
                                         .fill(
                                             LinearGradient(
-                                                colors: [Color.acidGreen, Color.acidGreen.opacity(0.8)],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
+                                                colors: [Color.acidGreen, Color.acidGreen.opacity(0.85)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
                                             )
                                         )
-                                        .shadow(color: Color.acidGreen.opacity(0.3), radius: 8, y: 4)
+                                        .shadow(color: Color.acidGreen.opacity(0.4), radius: 12, y: 6)
                                 )
                             }
                             .listRowBackground(Color.clear)
@@ -166,7 +202,7 @@ struct WorkoutPlanEditView: View {
             }
             .navigationTitle("Modifica Scheda")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.customBlack, for: .navigationBar)
+            .toolbarBackground(Color.black, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
