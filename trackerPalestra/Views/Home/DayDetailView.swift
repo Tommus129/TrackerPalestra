@@ -10,6 +10,9 @@ struct DayDetailView: View {
     @State private var newExerciseIsBodyweight: Bool = false
     @State private var newExerciseNotes: String = ""
 
+    // Costante per il raggio degli angoli standardizzato
+    private let standardCornerRadius: CGFloat = 14
+
     var suggestions: [String] {
         if newExerciseName.isEmpty { return [] }
         return viewModel.exerciseNames.filter {
@@ -52,7 +55,7 @@ struct DayDetailView: View {
                     headerView(icon: "calendar.circle.fill", text: "NOME GIORNO")
                 }
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(
                             LinearGradient(
                                 colors: [
@@ -64,7 +67,7 @@ struct DayDetailView: View {
                             )
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                         )
                         .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
@@ -85,10 +88,10 @@ struct DayDetailView: View {
                     headerView(icon: "list.bullet.clipboard.fill", text: "ESERCIZI IN LISTA")
                 }
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color.white.opacity(0.08))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                         )
                         .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
@@ -102,10 +105,10 @@ struct DayDetailView: View {
                     headerView(icon: "plus.app.fill", text: "NUOVO ESERCIZIO / CIRCUITO")
                 }
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color.white.opacity(0.06))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
@@ -136,7 +139,7 @@ struct DayDetailView: View {
     @ViewBuilder
     private func exerciseRowView(exercise: WorkoutPlanExercise) -> some View {
         HStack(spacing: 14) {
-            // Icona esercizio rotonda
+            // Icona esercizio
             ZStack {
                 Circle()
                     .fill(
@@ -177,7 +180,7 @@ struct DayDetailView: View {
                     .foregroundColor(.white)
                 
                 HStack(spacing: 8) {
-                    // Serie e Reps rotondeggianti
+                    // Serie e Reps
                     HStack(spacing: 4) {
                         Text("\(exercise.defaultSets)")
                             .font(.system(size: 16, weight: .black))
@@ -236,15 +239,15 @@ struct DayDetailView: View {
                 .foregroundColor(.white)
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color.white.opacity(0.12))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .strokeBorder(Color.white.opacity(0.3), lineWidth: 2)
                         )
                 )
             
-            // Suggestions rotondeggianti
+            // Suggestions
             if !suggestions.isEmpty {
                 suggestionsScrollView
             }
@@ -255,10 +258,10 @@ struct DayDetailView: View {
                 .foregroundColor(.white)
                 .padding(12)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color.white.opacity(0.08))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
@@ -267,7 +270,7 @@ struct DayDetailView: View {
             // Serie e Reps
             steppersView
             
-            // Toggle Corpo Libero rotondo
+            // Toggle Corpo Libero
             Toggle(isOn: $newExerciseIsBodyweight) {
                 HStack(spacing: 10) {
                     ZStack {
@@ -356,10 +359,10 @@ struct DayDetailView: View {
                     .foregroundColor(.white)
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: standardCornerRadius)
                             .fill(Color.white.opacity(0.1))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: standardCornerRadius)
                                     .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
@@ -376,10 +379,10 @@ struct DayDetailView: View {
                     .foregroundColor(.white)
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: standardCornerRadius)
                             .fill(Color.white.opacity(0.1))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: standardCornerRadius)
                                     .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
@@ -410,7 +413,7 @@ struct DayDetailView: View {
     }
     
     private var buttonBackground: some View {
-        RoundedRectangle(cornerRadius: 16)
+        RoundedRectangle(cornerRadius: standardCornerRadius)
             .fill(
                 newExerciseName.isEmpty ? 
                 AnyShapeStyle(Color.white.opacity(0.12)) :
@@ -423,7 +426,7 @@ struct DayDetailView: View {
                 )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: standardCornerRadius)
                     .strokeBorder(
                         newExerciseName.isEmpty ? 
                             Color.white.opacity(0.3) : 
