@@ -20,67 +20,291 @@ struct DayDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.customBlack.ignoresSafeArea()
+            // Background gradient
+            LinearGradient(
+                colors: [Color.customBlack, Color.deepPurple.opacity(0.3)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
             List {
+                // SECTION NOME GIORNO
                 Section {
-                    TextField("Nome giorno", text: $day.label).foregroundColor(.white)
-                } header: { Text("NOME GIORNO").foregroundColor(.acidGreen) }
-                .listRowBackground(Color.white.opacity(0.05))
+                    TextField("Nome giorno", text: $day.label)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 6)
+                } header: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar.circle.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("NOME GIORNO")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(1.2)
+                    }
+                    .foregroundColor(.acidGreen)
+                }
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.deepPurple.opacity(0.2))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.acidGreen.opacity(0.2), lineWidth: 1)
+                        )
+                )
+                .listRowSeparator(.hidden)
 
-                Section("ESERCIZI IN LISTA") {
+                // SECTION ESERCIZI IN LISTA
+                Section {
                     ForEach(day.exercises) { exercise in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(exercise.name.uppercased()).font(.headline).foregroundColor(.white)
-                                Spacer()
-                                Text("\(exercise.defaultSets)x\(exercise.defaultReps)").font(.caption).foregroundColor(.secondary)
+                        HStack(spacing: 12) {
+                            // Icona esercizio
+                            ZStack {
+                                Circle()
+                                    .fill(exercise.isBodyweight ? Color.acidGreen.opacity(0.2) : Color.deepPurple.opacity(0.3))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: exercise.isBodyweight ? "figure.flexibility" : "dumbbell.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(exercise.isBodyweight ? .acidGreen : .white.opacity(0.8))
                             }
-                            if !exercise.notes.isEmpty {
-                                Text(exercise.notes).font(.caption2).italic().foregroundColor(.acidGreen.opacity(0.8))
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(exercise.name)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(.white)
+                                
+                                HStack(spacing: 8) {
+                                    // Serie e Reps
+                                    HStack(spacing: 4) {
+                                        Text("\(exercise.defaultSets)")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundColor(.acidGreen)
+                                        Text("×")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.white.opacity(0.5))
+                                        Text("\(exercise.defaultReps)")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundColor(.acidGreen)
+                                    }
+                                    
+                                    if exercise.isBodyweight {
+                                        Text("BW")
+                                            .font(.system(size: 9, weight: .black))
+                                            .foregroundColor(.customBlack)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Capsule().fill(Color.acidGreen))
+                                    }
+                                }
+                                
+                                if !exercise.notes.isEmpty {
+                                    Text(exercise.notes)
+                                        .font(.system(size: 12))
+                                        .italic()
+                                        .foregroundColor(.acidGreen.opacity(0.8))
+                                        .padding(.top, 2)
+                                }
                             }
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .onDelete { offsets in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            day.exercises.remove(atOffsets: offsets)
                         }
                     }
-                    .onDelete { day.exercises.remove(atOffsets: $0) }
+                } header: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "list.bullet.clipboard.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("ESERCIZI IN LISTA")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(1.2)
+                    }
+                    .foregroundColor(.acidGreen)
                 }
-                .listRowBackground(Color.white.opacity(0.05))
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
+                )
+                .listRowSeparator(.hidden)
 
-                Section("NUOVO ESERCIZIO / CIRCUITO") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        TextField("Nome esercizio", text: $newExerciseName).foregroundColor(.white)
+                // SECTION NUOVO ESERCIZIO
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Nome esercizio
+                        TextField("Nome esercizio", text: $newExerciseName)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.white.opacity(0.08))
+                            )
+                        
+                        // Suggestions
                         if !suggestions.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
+                                HStack(spacing: 8) {
                                     ForEach(suggestions, id: \.self) { sug in
-                                        Button(sug) { newExerciseName = sug }.buttonStyle(.bordered).tint(.acidGreen).controlSize(.mini)
+                                        Button {
+                                            newExerciseName = sug
+                                        } label: {
+                                            Text(sug)
+                                                .font(.system(size: 13, weight: .medium))
+                                                .foregroundColor(.acidGreen)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(
+                                                    Capsule()
+                                                        .fill(Color.acidGreen.opacity(0.15))
+                                                        .overlay(
+                                                            Capsule()
+                                                                .stroke(Color.acidGreen.opacity(0.3), lineWidth: 1)
+                                                        )
+                                                )
+                                        }
                                     }
                                 }
                             }
                         }
+                        
+                        // Note circuito
                         TextField("Descrizione circuito (opzionale)", text: $newExerciseNotes, axis: .vertical)
-                            .font(.caption).foregroundColor(.white).padding(8).background(Color.white.opacity(0.05)).cornerRadius(8)
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.white.opacity(0.05))
+                            )
+                            .lineLimit(2...4)
                     }
-                    HStack {
-                        Stepper("Serie: \(newExerciseSets)", value: $newExerciseSets, in: 1...15)
-                        Stepper("Reps: \(newExerciseReps)", value: $newExerciseReps, in: 1...50)
-                    }.foregroundColor(.white)
-                    Toggle("Corpo Libero", isOn: $newExerciseIsBodyweight).foregroundColor(.white)
+                    
+                    // Serie e Reps
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("SERIE")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white.opacity(0.6))
+                                .tracking(0.8)
+                            Stepper("\(newExerciseSets)", value: $newExerciseSets, in: 1...15)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("RIPETIZIONI")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white.opacity(0.6))
+                                .tracking(0.8)
+                            Stepper("\(newExerciseReps)", value: $newExerciseReps, in: 1...50)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // Toggle Corpo Libero
+                    Toggle(isOn: $newExerciseIsBodyweight) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "figure.flexibility")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Corpo Libero")
+                                .font(.system(size: 15, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                    }
+                    .tint(.acidGreen)
+                    .padding(.vertical, 4)
+                    
+                    // Bottone Aggiungi
                     Button(action: addExercise) {
-                        Label("AGGIUNGI", systemImage: "plus.circle.fill").fontWeight(.bold).foregroundColor(.customBlack)
-                    }.buttonStyle(.borderedProminent).tint(.acidGreen).disabled(newExerciseName.isEmpty)
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20))
+                            Text("Aggiungi Esercizio")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(newExerciseName.isEmpty ? .white.opacity(0.4) : .customBlack)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(
+                                    newExerciseName.isEmpty ? 
+                                    Color.white.opacity(0.1) :
+                                    LinearGradient(
+                                        colors: [Color.acidGreen, Color.acidGreen.opacity(0.8)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .shadow(
+                                    color: newExerciseName.isEmpty ? Color.clear : Color.acidGreen.opacity(0.3),
+                                    radius: 8,
+                                    y: 4
+                                )
+                        )
+                    }
+                    .disabled(newExerciseName.isEmpty)
+                } header: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.app.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("NUOVO ESERCIZIO / CIRCUITO")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(1.2)
+                    }
+                    .foregroundColor(.acidGreen)
                 }
-                .listRowBackground(Color.white.opacity(0.05))
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white.opacity(0.04))
+                )
+                .listRowSeparator(.hidden)
             }
             .scrollContentBackground(.hidden)
         }
         .navigationTitle(day.label)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.customBlack, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 
     private func addExercise() {
         let name = viewModel.normalizeName(newExerciseName)
         guard !name.isEmpty else { return }
-        let ex = WorkoutPlanExercise(id: UUID().uuidString, name: name, defaultSets: newExerciseSets, defaultReps: newExerciseReps, isBodyweight: newExerciseIsBodyweight, notes: newExerciseNotes)
-        day.exercises.append(ex)
-        newExerciseName = ""; newExerciseNotes = ""
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        
+        let ex = WorkoutPlanExercise(
+            id: UUID().uuidString,
+            name: name,
+            defaultSets: newExerciseSets,
+            defaultReps: newExerciseReps,
+            isBodyweight: newExerciseIsBodyweight,
+            notes: newExerciseNotes
+        )
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            day.exercises.append(ex)
+        }
+        
+        // Reset form
+        newExerciseName = ""
+        newExerciseNotes = ""
+        newExerciseSets = 3
+        newExerciseReps = 8
+        newExerciseIsBodyweight = false
+        
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 }
