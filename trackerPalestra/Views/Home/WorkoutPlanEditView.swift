@@ -43,7 +43,7 @@ struct WorkoutPlanEditView: View {
                             .padding(.bottom, 4)
                         }
                         .listRowBackground(
-                            Rectangle()
+                            RoundedRectangle(cornerRadius: 16)
                                 .fill(
                                     LinearGradient(
                                         colors: [
@@ -55,7 +55,7 @@ struct WorkoutPlanEditView: View {
                                     )
                                 )
                                 .overlay(
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 16)
                                         .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2.5)
                                 )
                                 .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
@@ -68,9 +68,9 @@ struct WorkoutPlanEditView: View {
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
                                     HStack(spacing: 16) {
-                                        // Badge numero giorno SQUADRATO
+                                        // Badge numero giorno SQUADRATO (mantenuto rotondo come richiesto dal revert)
                                         ZStack {
-                                            Rectangle()
+                                            Circle()
                                                 .fill(
                                                     LinearGradient(
                                                         colors: [
@@ -83,7 +83,7 @@ struct WorkoutPlanEditView: View {
                                                 )
                                                 .frame(width: 52, height: 52)
                                                 .overlay(
-                                                    Rectangle()
+                                                    Circle()
                                                         .strokeBorder(Color.acidGreen.opacity(0.7), lineWidth: 2.5)
                                                 )
                                                 .shadow(color: Color.acidGreen.opacity(0.5), radius: 10, y: 5)
@@ -116,10 +116,10 @@ struct WorkoutPlanEditView: View {
                                     .padding(.vertical, 12)
                                 }
                                 .listRowBackground(
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 16)
                                         .fill(Color.white.opacity(0.08))
                                         .overlay(
-                                            Rectangle()
+                                            RoundedRectangle(cornerRadius: 16)
                                                 .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                                         )
                                         .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
@@ -138,7 +138,7 @@ struct WorkoutPlanEditView: View {
                                 addDay()
                             } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: "plus.square.fill")
+                                    Image(systemName: "plus.circle.fill")
                                         .font(.system(size: 24))
                                     Text("Aggiungi Giorno")
                                         .font(.system(size: 17, weight: .black))
@@ -147,7 +147,7 @@ struct WorkoutPlanEditView: View {
                                 .foregroundColor(.black)
                                 .padding(.vertical, 17)
                                 .background(
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 16)
                                         .fill(
                                             LinearGradient(
                                                 colors: [Color.acidGreen, Color.acidGreen.opacity(0.85)],
