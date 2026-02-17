@@ -11,7 +11,7 @@ struct DayDetailView: View {
     @State private var newExerciseNotes: String = ""
 
     // Costante per il raggio degli angoli standardizzato
-    private let standardCornerRadius: CGFloat = 14
+    private let standardCornerRadius: CGFloat = 12
 
     var suggestions: [String] {
         if newExerciseName.isEmpty { return [] }
@@ -21,52 +21,31 @@ struct DayDetailView: View {
         }
     }
     
-    // Background scuro
-    private var backgroundGradient: some View {
-        ZStack {
-            Color.black
-                .ignoresSafeArea()
-            
-            LinearGradient(
-                colors: [
-                    Color.black,
-                    Color.deepPurple.opacity(0.15),
-                    Color.black
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-        }
+    // Background scuro semplice
+    private var backgroundView: some View {
+        Color.black.ignoresSafeArea()
     }
 
     var body: some View {
         ZStack {
-            backgroundGradient
+            backgroundView
             
             List {
                 // SECTION NOME GIORNO
                 Section {
                     TextField("Nome giorno", text: $day.label)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 4)
                 } header: {
-                    headerView(icon: "calendar.circle.fill", text: "NOME GIORNO")
+                    Text("NOME GIORNO")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.gray)
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: standardCornerRadius)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.deepPurple.opacity(0.4),
-                                    Color.deepPurple.opacity(0.3)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
+                        .fill(Color(UIColor.systemGray6).opacity(0.12))
                 )
                 .listRowSeparator(.hidden)
 
@@ -81,16 +60,14 @@ struct DayDetailView: View {
                         }
                     }
                 } header: {
-                    headerView(icon: "list.bullet.clipboard.fill", text: "ESERCIZI IN LISTA")
+                    Text("ESERCIZI")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.gray)
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: standardCornerRadius)
-                        .fill(Color.white.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: standardCornerRadius)
-                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
-                        )
-                        .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
+                        .fill(Color(UIColor.systemGray6).opacity(0.12))
                 )
                 .listRowSeparator(.hidden)
 
@@ -98,15 +75,14 @@ struct DayDetailView: View {
                 Section {
                     newExerciseFormView
                 } header: {
-                    headerView(icon: "plus.app.fill", text: "NUOVO ESERCIZIO / CIRCUITO")
+                    Text("AGGIUNGI ESERCIZIO")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.gray)
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: standardCornerRadius)
-                        .fill(Color.white.opacity(0.06))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: standardCornerRadius)
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
-                        )
+                        .fill(Color(UIColor.systemGray6).opacity(0.08))
                 )
                 .listRowSeparator(.hidden)
             }
@@ -121,126 +97,66 @@ struct DayDetailView: View {
     // MARK: - Subviews
     
     @ViewBuilder
-    private func headerView(icon: String, text: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .black))
-            Text(text)
-                .font(.system(size: 12, weight: .black))
-                .tracking(1.3)
-        }
-        .foregroundColor(.acidGreen)
-    }
-    
-    @ViewBuilder
     private func exerciseRowView(exercise: WorkoutPlanExercise) -> some View {
         HStack(spacing: 14) {
-            // Icona esercizio
+            // Icona semplice
             ZStack {
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: exercise.isBodyweight ? 
-                                [Color.acidGreen.opacity(0.5), Color.acidGreen.opacity(0.35)] :
-                                [Color.deepPurple.opacity(0.6), Color.deepPurple.opacity(0.4)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Circle()
-                            .strokeBorder(
-                                exercise.isBodyweight ? 
-                                    Color.acidGreen.opacity(0.9) : 
-                                    Color.white.opacity(0.5),
-                                lineWidth: 2.5
-                            )
-                    )
-                    .shadow(
-                        color: exercise.isBodyweight ? 
-                            Color.acidGreen.opacity(0.5) : 
-                            Color.deepPurple.opacity(0.4),
-                        radius: 10,
-                        y: 5
-                    )
+                    .fill(Color(UIColor.systemGray5).opacity(0.2))
+                    .frame(width: 44, height: 44)
                 
                 Image(systemName: exercise.isBodyweight ? "figure.flexibility" : "dumbbell.fill")
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundColor(exercise.isBodyweight ? .acidGreen : .white)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.acidGreen)
             }
             
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(exercise.name)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                 
                 HStack(spacing: 8) {
-                    // Serie e Reps
-                    HStack(spacing: 4) {
-                        Text("\(exercise.defaultSets)")
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundColor(.acidGreen)
-                        Text("×")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.6))
-                        Text("\(exercise.defaultReps)")
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundColor(.acidGreen)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color.acidGreen.opacity(0.2))
-                            .overlay(
-                                Capsule()
-                                    .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
-                            )
-                    )
+                    Text("\(exercise.defaultSets) × \(exercise.defaultReps)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.gray)
                     
                     if exercise.isBodyweight {
                         Text("BW")
-                            .font(.system(size: 12, weight: .black))
+                            .font(.caption)
+                            .fontWeight(.bold)
                             .foregroundColor(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
                             .background(
                                 Capsule()
                                     .fill(Color.acidGreen)
-                                    .shadow(color: Color.acidGreen.opacity(0.6), radius: 8, y: 4)
                             )
                     }
                 }
                 
                 if !exercise.notes.isEmpty {
                     Text(exercise.notes)
-                        .font(.system(size: 13, weight: .medium))
-                        .italic()
-                        .foregroundColor(.acidGreen.opacity(0.85))
-                        .padding(.top, 3)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
                 }
             }
             
             Spacer()
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
     }
     
     private var newExerciseFormView: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             // Nome esercizio
             TextField("Nome esercizio", text: $newExerciseName)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 16))
                 .foregroundColor(.white)
-                .padding(14)
+                .padding(12)
                 .background(
-                    RoundedRectangle(cornerRadius: standardCornerRadius)
-                        .fill(Color.white.opacity(0.12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: standardCornerRadius)
-                                .strokeBorder(Color.white.opacity(0.3), lineWidth: 2)
-                        )
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.1))
                 )
             
             // Suggestions
@@ -248,63 +164,41 @@ struct DayDetailView: View {
                 suggestionsScrollView
             }
             
-            // Note circuito
-            TextField("Descrizione circuito (opzionale)", text: $newExerciseNotes, axis: .vertical)
-                .font(.system(size: 14, weight: .medium))
+            // Note
+            TextField("Note (opzionale)", text: $newExerciseNotes, axis: .vertical)
+                .font(.system(size: 14))
                 .foregroundColor(.white)
                 .padding(12)
                 .background(
-                    RoundedRectangle(cornerRadius: standardCornerRadius)
-                        .fill(Color.white.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: standardCornerRadius)
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
-                        )
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.06))
                 )
                 .lineLimit(2...4)
             
             // Serie e Reps
             steppersView
             
-            // Toggle Corpo Libero
-            Toggle(isOn: $newExerciseIsBodyweight) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: newExerciseIsBodyweight ? 
-                                        [Color.acidGreen.opacity(0.35), Color.acidGreen.opacity(0.2)] :
-                                        [Color.white.opacity(0.15), Color.white.opacity(0.08)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Circle()
-                                    .strokeBorder(
-                                        newExerciseIsBodyweight ? 
-                                            Color.acidGreen.opacity(0.7) : 
-                                            Color.white.opacity(0.3),
-                                        lineWidth: 2
-                                    )
-                            )
-                        Image(systemName: "figure.flexibility")
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundColor(newExerciseIsBodyweight ? .acidGreen : .white.opacity(0.7))
-                    }
-                    Text("Corpo Libero")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-            }
-            .tint(.acidGreen)
-            .padding(.vertical, 6)
+            // Toggle
+            Toggle("Corpo Libero", isOn: $newExerciseIsBodyweight)
+                .font(.system(size: 16, weight: .medium))
+                .tint(.acidGreen)
+                .padding(.vertical, 4)
             
-            // Bottone Aggiungi
-            addExerciseButton
+            // Bottone Aggiungi Semplice
+            Button(action: addExercise) {
+                Text("Aggiungi")
+                    .font(.headline)
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(newExerciseName.isEmpty ? Color.gray : Color.acidGreen)
+                    )
+            }
+            .disabled(newExerciseName.isEmpty)
         }
+        .padding(.vertical, 8)
     }
     
     private var suggestionsScrollView: some View {
@@ -315,27 +209,14 @@ struct DayDetailView: View {
                         newExerciseName = sug
                     } label: {
                         Text(sug)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.acidGreen)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.acidGreen.opacity(0.3),
-                                                Color.acidGreen.opacity(0.2)
-                                            ],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .overlay(
-                                        Capsule()
-                                            .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
-                                    )
-                                    .shadow(color: Color.acidGreen.opacity(0.4), radius: 8, y: 4)
+                                    .fill(Color.white.opacity(0.15))
                             )
                     }
                 }
@@ -345,96 +226,42 @@ struct DayDetailView: View {
     
     private var steppersView: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("SERIE")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundColor(.acidGreen)
-                    .tracking(1.2)
-                Stepper("\(newExerciseSets)", value: $newExerciseSets, in: 1...15)
-                    .font(.system(size: 17, weight: .black))
+            // Stepper Serie
+            HStack {
+                Text("Serie")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                Spacer()
+                Text("\(newExerciseSets)")
+                    .font(.headline)
                     .foregroundColor(.white)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: standardCornerRadius)
-                            .fill(Color.white.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: standardCornerRadius)
-                                    .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
-                            )
-                    )
+                Stepper("", value: $newExerciseSets, in: 1...15)
+                    .labelsHidden()
             }
-            .frame(maxWidth: .infinity)
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.06))
+            )
             
-            VStack(alignment: .leading, spacing: 8) {
-                Text("RIPETIZIONI")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundColor(.acidGreen)
-                    .tracking(1.2)
-                Stepper("\(newExerciseReps)", value: $newExerciseReps, in: 1...50)
-                    .font(.system(size: 17, weight: .black))
+            // Stepper Reps
+            HStack {
+                Text("Reps")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                Spacer()
+                Text("\(newExerciseReps)")
+                    .font(.headline)
                     .foregroundColor(.white)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: standardCornerRadius)
-                            .fill(Color.white.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: standardCornerRadius)
-                                    .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
-                            )
-                    )
+                Stepper("", value: $newExerciseReps, in: 1...50)
+                    .labelsHidden()
             }
-            .frame(maxWidth: .infinity)
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.06))
+            )
         }
-        .padding(.vertical, 6)
-    }
-    
-    private var addExerciseButton: some View {
-        Button(action: addExercise) {
-            HStack(spacing: 10) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24))
-                Text("Aggiungi Esercizio")
-                    .font(.system(size: 17, weight: .black))
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundColor(buttonForegroundColor)
-            .padding(.vertical, 17)
-            .background(buttonBackground)
-        }
-        .disabled(newExerciseName.isEmpty)
-    }
-    
-    private var buttonForegroundColor: Color {
-        newExerciseName.isEmpty ? .white.opacity(0.5) : .black
-    }
-    
-    private var buttonBackground: some View {
-        RoundedRectangle(cornerRadius: standardCornerRadius)
-            .fill(
-                newExerciseName.isEmpty ? 
-                AnyShapeStyle(Color.white.opacity(0.12)) :
-                AnyShapeStyle(
-                    LinearGradient(
-                        colors: [Color.acidGreen, Color.acidGreen.opacity(0.85)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: standardCornerRadius)
-                    .strokeBorder(
-                        newExerciseName.isEmpty ? 
-                            Color.white.opacity(0.3) : 
-                            Color.clear,
-                        lineWidth: 2
-                    )
-            )
-            .shadow(
-                color: newExerciseName.isEmpty ? Color.clear : Color.acidGreen.opacity(0.6),
-                radius: 14,
-                y: 7
-            )
     }
 
     // MARK: - Actions
