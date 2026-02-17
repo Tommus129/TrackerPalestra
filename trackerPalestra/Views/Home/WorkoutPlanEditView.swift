@@ -5,25 +5,13 @@ struct WorkoutPlanEditView: View {
     @Environment(\.dismiss) var dismiss
     
     // Costante per il raggio degli angoli standardizzato
-    private let standardCornerRadius: CGFloat = 14
+    private let standardCornerRadius: CGFloat = 12
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background scuro
-                Color.black
-                    .ignoresSafeArea()
-                
-                LinearGradient(
-                    colors: [
-                        Color.black,
-                        Color.deepPurple.opacity(0.15),
-                        Color.black
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Background scuro semplice
+                Color.black.ignoresSafeArea()
                 
                 // Usiamo un Binding opzionale sicuro su editingPlan
                 if let planBinding = Binding($viewModel.editingPlan) {
@@ -31,33 +19,18 @@ struct WorkoutPlanEditView: View {
                         // SECTION NOME SCHEDA
                         Section {
                             TextField("Es: Push Pull Legs", text: planBinding.name)
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.white)
-                                .padding(.vertical, 8)
+                                .padding(.vertical, 4)
                         } header: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "doc.text.fill")
-                                    .font(.system(size: 13, weight: .black))
-                                Text("NOME SCHEDA")
-                                    .font(.system(size: 12, weight: .black))
-                                    .tracking(1.5)
-                            }
-                            .foregroundColor(.acidGreen)
-                            .padding(.bottom, 4)
+                            Text("NOME SCHEDA")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.gray)
                         }
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: standardCornerRadius)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.deepPurple.opacity(0.4),
-                                            Color.deepPurple.opacity(0.3)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
+                                .fill(Color(UIColor.systemGray6).opacity(0.12))
                         )
                         .listRowSeparator(.hidden)
 
@@ -66,65 +39,35 @@ struct WorkoutPlanEditView: View {
                             // Ciclo sicuro sui Binding degli elementi
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
-                                    HStack(spacing: 16) {
-                                        // Badge numero giorno
+                                    HStack(spacing: 12) {
+                                        // Badge numero giorno Semplice
                                         ZStack {
                                             Circle()
-                                                .fill(
-                                                    LinearGradient(
-                                                        colors: [
-                                                            Color.acidGreen.opacity(0.5),
-                                                            Color.acidGreen.opacity(0.35)
-                                                        ],
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing
-                                                    )
-                                                )
-                                                .frame(width: 52, height: 52)
-                                                .overlay(
-                                                    Circle()
-                                                        .strokeBorder(Color.acidGreen.opacity(0.7), lineWidth: 2.5)
-                                                )
-                                                .shadow(color: Color.acidGreen.opacity(0.5), radius: 10, y: 5)
+                                                .fill(Color(UIColor.systemGray5).opacity(0.3))
+                                                .frame(width: 36, height: 36)
                                             
                                             Text("\(dayNumber(for: day.id))")
-                                                .font(.system(size: 20, weight: .black))
-                                                .foregroundColor(.acidGreen)
+                                                .font(.headline)
+                                                .foregroundColor(.white)
                                         }
                                         
-                                        VStack(alignment: .leading, spacing: 6) {
+                                        VStack(alignment: .leading, spacing: 2) {
                                             Text(day.label)
-                                                .font(.system(size: 17, weight: .bold))
+                                                .font(.system(size: 16, weight: .semibold))
                                                 .foregroundColor(.white)
                                             
-                                            HStack(spacing: 6) {
-                                                Image(systemName: "figure.run")
-                                                    .font(.system(size: 12, weight: .bold))
-                                                Text("\(day.exercises.count) esercizi")
-                                                    .font(.system(size: 14, weight: .semibold))
-                                            }
-                                            .foregroundColor(.white.opacity(0.6))
+                                            Text("\(day.exercises.count) esercizi")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
                                         }
-                                        
-                                        Spacer()
-                                        
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 15, weight: .bold))
-                                            .foregroundColor(.acidGreen.opacity(0.6))
                                     }
-                                    .padding(.vertical, 12)
+                                    .padding(.vertical, 4)
                                 }
                                 .listRowBackground(
                                     RoundedRectangle(cornerRadius: standardCornerRadius)
-                                        .fill(Color.white.opacity(0.08))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: standardCornerRadius)
-                                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
-                                        )
-                                        .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
+                                        .fill(Color(UIColor.systemGray6).opacity(0.12))
                                 )
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                             }
                             .onDelete { offsets in
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -132,56 +75,37 @@ struct WorkoutPlanEditView: View {
                                 }
                             }
 
-                            // BOTTONE AGGIUNGI GIORNO
+                            // BOTTONE AGGIUNGI GIORNO SEMPLICE
                             Button {
                                 addDay()
                             } label: {
-                                HStack(spacing: 12) {
+                                HStack {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 24))
                                     Text("Aggiungi Giorno")
-                                        .font(.system(size: 17, weight: .black))
+                                        .fontWeight(.medium)
                                 }
-                                .frame(maxWidth: .infinity)
-                                .foregroundColor(.black)
-                                .padding(.vertical, 17)
-                                .background(
-                                    RoundedRectangle(cornerRadius: standardCornerRadius)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color.acidGreen, Color.acidGreen.opacity(0.85)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .shadow(color: Color.acidGreen.opacity(0.6), radius: 14, y: 7)
-                                )
+                                .foregroundColor(.acidGreen)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 8)
                             }
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         } header: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "calendar.badge.clock")
-                                    .font(.system(size: 13, weight: .black))
-                                Text("GIORNI DI ALLENAMENTO")
-                                    .font(.system(size: 12, weight: .black))
-                                    .tracking(1.5)
-                            }
-                            .foregroundColor(.acidGreen)
-                            .padding(.bottom, 4)
-                            .padding(.top, 8)
+                            Text("GIORNI DI ALLENAMENTO")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.gray)
+                                .padding(.top, 8)
                         }
                     }
                     .scrollContentBackground(.hidden)
                 } else {
                     VStack(spacing: 16) {
                         ProgressView()
-                            .scaleEffect(1.2)
-                            .tint(.acidGreen)
+                            .tint(.gray)
                         Text("Caricamento...")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
                 }
             }
@@ -191,35 +115,22 @@ struct WorkoutPlanEditView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    Button("Annulla") {
                         dismiss()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 19))
-                            Text("Annulla")
-                                .font(.system(size: 16, weight: .semibold))
-                        }
-                        .foregroundColor(.red.opacity(0.85))
                     }
+                    .foregroundColor(.red)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    Button("Salva") {
                         viewModel.saveEditingPlan { success in
                             if success {
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 dismiss()
                             }
                         }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 19))
-                            Text("Salva")
-                                .font(.system(size: 16, weight: .black))
-                        }
-                        .foregroundColor(.acidGreen)
                     }
+                    .foregroundColor(.acidGreen)
+                    .fontWeight(.bold)
                 }
             }
         }
@@ -235,7 +146,7 @@ struct WorkoutPlanEditView: View {
         guard var plan = viewModel.editingPlan else { return }
         let newDay = WorkoutPlanDay(
             id: UUID().uuidString,
-            label: "Day \(Character(UnicodeScalar(65 + plan.days.count)!))",
+            label: "Giorno \(plan.days.count + 1)",
             exercises: []
         )
         
