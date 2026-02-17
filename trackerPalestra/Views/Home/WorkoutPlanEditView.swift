@@ -140,8 +140,9 @@ struct WorkoutPlanEditView: View {
             }
             .navigationTitle("MODIFICA SCHEDA")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .navigationBarLeading) {
                     Button(action: {
                         dismiss()
                     }) {
@@ -150,7 +151,7 @@ struct WorkoutPlanEditView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button(action: {
                         viewModel.saveEditingPlan { success in
                             if success {
