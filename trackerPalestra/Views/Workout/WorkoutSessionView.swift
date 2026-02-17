@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
 
 struct WorkoutSessionView: View {
     @EnvironmentObject var viewModel: MainViewModel
@@ -52,7 +53,7 @@ struct WorkoutSessionView: View {
                             .onDrag {
                                 return NSItemProvider(object: String(index) as NSString)
                             }
-                            .onDrop(of: [.text], delegate: ExerciseDropDelegate(
+                            .onDrop(of: [UTType.text], delegate: ExerciseDropDelegate(
                                 exercises: $localSession.exercises,
                                 draggedIndex: index
                             ))
@@ -350,9 +351,9 @@ struct ExerciseDropDelegate: DropDelegate {
     }
     
     func dropEntered(info: DropInfo) {
-        guard let itemProvider = info.itemProviders(for: [.text]).first else { return }
+        guard let itemProvider = info.itemProviders(for: [UTType.text]).first else { return }
         
-        itemProvider.loadItem(forTypeIdentifier: "public.text", options: nil) { (item, error) in
+        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (item, error) in
             guard let data = item as? Data,
                   let sourceIndexString = String(data: data, encoding: .utf8),
                   let sourceIndex = Int(sourceIndexString),
