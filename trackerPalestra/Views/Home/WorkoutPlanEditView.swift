@@ -3,6 +3,9 @@ import SwiftUI
 struct WorkoutPlanEditView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
+    
+    // Costante per il raggio degli angoli standardizzato
+    private let standardCornerRadius: CGFloat = 14
 
     var body: some View {
         NavigationStack {
@@ -43,7 +46,7 @@ struct WorkoutPlanEditView: View {
                             .padding(.bottom, 4)
                         }
                         .listRowBackground(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .fill(
                                     LinearGradient(
                                         colors: [
@@ -55,7 +58,7 @@ struct WorkoutPlanEditView: View {
                                     )
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: standardCornerRadius)
                                         .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2.5)
                                 )
                                 .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
@@ -68,7 +71,7 @@ struct WorkoutPlanEditView: View {
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
                                     HStack(spacing: 16) {
-                                        // Badge numero giorno SQUADRATO (mantenuto rotondo come richiesto dal revert)
+                                        // Badge numero giorno
                                         ZStack {
                                             Circle()
                                                 .fill(
@@ -116,10 +119,10 @@ struct WorkoutPlanEditView: View {
                                     .padding(.vertical, 12)
                                 }
                                 .listRowBackground(
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: standardCornerRadius)
                                         .fill(Color.white.opacity(0.08))
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 16)
+                                            RoundedRectangle(cornerRadius: standardCornerRadius)
                                                 .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                                         )
                                         .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
@@ -147,7 +150,7 @@ struct WorkoutPlanEditView: View {
                                 .foregroundColor(.black)
                                 .padding(.vertical, 17)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: standardCornerRadius)
                                         .fill(
                                             LinearGradient(
                                                 colors: [Color.acidGreen, Color.acidGreen.opacity(0.85)],
