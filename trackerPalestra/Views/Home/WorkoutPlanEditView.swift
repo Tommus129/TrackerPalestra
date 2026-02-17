@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct WorkoutPlanEditView: View {
     @EnvironmentObject var viewModel: MainViewModel
@@ -11,7 +10,7 @@ struct WorkoutPlanEditView: View {
             ZStack {
                 Color.customBlack.ignoresSafeArea()
                 
-                if let planBinding = Binding($viewModel.editingPlan) {
+                if viewModel.editingPlan != nil {
                     VStack(spacing: 0) {
                         // Custom Header
                         customHeader
@@ -25,18 +24,23 @@ struct WorkoutPlanEditView: View {
                                         .foregroundColor(.acidGreen)
                                         .tracking(2)
                                     
-                                    TextField("Es: Push Pull Legs", text: planBinding.name)
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .padding(16)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .fill(Color.white.opacity(0.05))
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 16)
-                                                        .stroke(Color.deepPurple.opacity(0.3), lineWidth: 2)
-                                                )
-                                        )
+                                    TextField("Es: Push Pull Legs", text: Binding(
+                                        get: { viewModel.editingPlan?.name ?? "" },
+                                        set: { newValue in
+                                            viewModel.editingPlan?.name = newValue
+                                        }
+                                    ))
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color.white.opacity(0.05))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(Color.deepPurple.opacity(0.3), lineWidth: 2)
+                                            )
+                                    )
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.top, 20)
@@ -45,13 +49,13 @@ struct WorkoutPlanEditView: View {
                                 HStack(spacing: 12) {
                                     statsCard(
                                         icon: "calendar",
-                                        value: "\(planBinding.wrappedValue.days.count)",
+                                        value: "\(viewModel.editingPlan?.days.count ?? 0)",
                                         label: "GIORNI"
                                     )
                                     
                                     statsCard(
                                         icon: "figure.strengthtraining.traditional",
-                                        value: "\(totalExercises(plan: planBinding.wrappedValue))",
+                                        value: "\(totalExercises())",
                                         label: "ESERCIZI"
                                     )
                                 }
@@ -64,46 +68,41 @@ struct WorkoutPlanEditView: View {
                                         .foregroundColor(.acidGreen)
                                         .tracking(2)
                                     Spacer()
-                                    Text("Tieni premuto per riordinare")
-                                        .font(.system(size: 9, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.4))
-                                        .italic()
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.top, 10)
                                 
-                                // Lista Giorni con Drag & Drop
-                                ForEach(Array(planBinding.wrappedValue.days.enumerated()), id: \.element.id) { index, day in
-                                    DayCardView(
-                                        day: planBinding.days[index],
-                                        dayNumber: index + 1,
-                                        isExpanded: expandedDayIds.contains(day.id),
-                                        onToggleExpand: {
-                                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                                if expandedDayIds.contains(day.id) {
-                                                    expandedDayIds.remove(day.id)
-                                                } else {
-                                                    expandedDayIds.insert(day.id)
+                                // Lista Giorni
+                                if let days = viewModel.editingPlan?.days {
+                                    ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                                        DayCardView(
+                                            day: day,
+                                            dayIndex: index,
+                                            dayNumber: index + 1,
+                                            isExpanded: expandedDayIds.contains(day.id),
+                                            onToggleExpand: {
+                                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                                    if expandedDayIds.contains(day.id) {
+                                                        expandedDayIds.remove(day.id)
+                                                    } else {
+                                                        expandedDayIds.insert(day.id)
+                                                    }
                                                 }
+                                            },
+                                            onUpdateLabel: { newLabel in
+                                                updateDayLabel(at: index, newLabel: newLabel)
+                                            },
+                                            onDelete: {
+                                                deleteDay(at: index)
+                                            },
+                                            onDuplicate: {
+                                                duplicateDay(at: index)
                                             }
-                                        },
-                                        onDelete: {
-                                            deleteDay(at: index)
-                                        },
-                                        onDuplicate: {
-                                            duplicateDay(at: index)
-                                        }
-                                    )
-                                    .onDrag {
-                                        return NSItemProvider(object: String(index) as NSString)
+                                        )
+                                        .environmentObject(viewModel)
                                     }
-                                    .onDrop(of: [UTType.text], delegate: DayDropDelegate(
-                                        days: planBinding.days,
-                                        draggedIndex: index
-                                    ))
-                                    .environmentObject(viewModel)
+                                    .padding(.horizontal, 20)
                                 }
-                                .padding(.horizontal, 20)
                                 
                                 // Bottone Aggiungi Giorno
                                 Button {
@@ -223,44 +222,53 @@ struct WorkoutPlanEditView: View {
     }
     
     // MARK: - Helper Functions
-    private func totalExercises(plan: WorkoutPlan) -> Int {
-        return plan.days.reduce(0) { $0 + $1.exercises.count }
+    private func totalExercises() -> Int {
+        return viewModel.editingPlan?.days.reduce(0) { $0 + $1.exercises.count } ?? 0
+    }
+    
+    private func updateDayLabel(at index: Int, newLabel: String) {
+        guard viewModel.editingPlan != nil, index < (viewModel.editingPlan?.days.count ?? 0) else { return }
+        viewModel.editingPlan?.days[index].label = newLabel
     }
     
     private func deleteDay(at index: Int) {
-        guard var plan = viewModel.editingPlan, index < plan.days.count else { return }
+        guard viewModel.editingPlan != nil, index < (viewModel.editingPlan?.days.count ?? 0) else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            plan.days.remove(at: index)
-            viewModel.editingPlan = plan
+            let dayId = viewModel.editingPlan?.days[index].id
+            viewModel.editingPlan?.days.remove(at: index)
+            if let id = dayId {
+                expandedDayIds.remove(id)
+            }
         }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
     private func addDay() {
-        guard var plan = viewModel.editingPlan else { return }
-        let dayLetter = Character(UnicodeScalar(65 + plan.days.count)!)
+        guard viewModel.editingPlan != nil else { return }
+        let count = viewModel.editingPlan?.days.count ?? 0
+        let dayLetter = Character(UnicodeScalar(65 + count)!)
         let newDay = WorkoutPlanDay(
             id: UUID().uuidString,
             label: "Day \(dayLetter)",
             exercises: []
         )
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            plan.days.append(newDay)
-            viewModel.editingPlan = plan
+            viewModel.editingPlan?.days.append(newDay)
             expandedDayIds.insert(newDay.id)
         }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
     
     private func duplicateDay(at index: Int) {
-        guard var plan = viewModel.editingPlan, index < plan.days.count else { return }
-        var duplicatedDay = plan.days[index]
+        guard viewModel.editingPlan != nil, index < (viewModel.editingPlan?.days.count ?? 0) else { return }
+        guard let originalDay = viewModel.editingPlan?.days[index] else { return }
+        
+        var duplicatedDay = originalDay
         duplicatedDay.id = UUID().uuidString
-        duplicatedDay.label = "\(duplicatedDay.label) (Copia)"
+        duplicatedDay.label = "\(originalDay.label) (Copia)"
         
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            plan.days.insert(duplicatedDay, at: index + 1)
-            viewModel.editingPlan = plan
+            viewModel.editingPlan?.days.insert(duplicatedDay, at: index + 1)
         }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
@@ -269,12 +277,16 @@ struct WorkoutPlanEditView: View {
 // MARK: - Day Card View
 struct DayCardView: View {
     @EnvironmentObject var viewModel: MainViewModel
-    @Binding var day: WorkoutPlanDay
+    let day: WorkoutPlanDay
+    let dayIndex: Int
     let dayNumber: Int
     let isExpanded: Bool
     let onToggleExpand: () -> Void
+    let onUpdateLabel: (String) -> Void
     let onDelete: () -> Void
     let onDuplicate: () -> Void
+    
+    @State private var labelText: String = ""
     
     private var accentColor: Color {
         let colors: [Color] = [.acidGreen, .purple, .orange, .blue, .pink, .cyan]
@@ -301,9 +313,17 @@ struct DayCardView: View {
                     
                     // Day Info
                     VStack(alignment: .leading, spacing: 4) {
-                        TextField("Nome Giorno", text: $day.label)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
+                        TextField("Nome Giorno", text: $labelText, onCommit: {
+                            onUpdateLabel(labelText)
+                        })
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .onAppear {
+                            labelText = day.label
+                        }
+                        .onChange(of: day.label) { newValue in
+                            labelText = newValue
+                        }
                         
                         HStack(spacing: 8) {
                             Image(systemName: "figure.run")
@@ -320,7 +340,6 @@ struct DayCardView: View {
                     Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle")
                         .font(.system(size: 24))
                         .foregroundColor(accentColor.opacity(isExpanded ? 1 : 0.4))
-                        .rotationEffect(.degrees(isExpanded ? 0 : 0))
                 }
                 .padding(20)
                 .background(
@@ -366,7 +385,12 @@ struct DayCardView: View {
                     // Action Buttons
                     HStack(spacing: 12) {
                         // Modifica Giorno
-                        NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
+                        NavigationLink(destination: DayDetailView(day: Binding(
+                            get: { viewModel.editingPlan?.days[dayIndex] ?? day },
+                            set: { newValue in
+                                viewModel.editingPlan?.days[dayIndex] = newValue
+                            }
+                        )).environmentObject(viewModel)) {
                             HStack {
                                 Image(systemName: "pencil")
                                 Text("MODIFICA")
@@ -461,38 +485,5 @@ struct DayCardView: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.white.opacity(0.03))
         )
-    }
-}
-
-// MARK: - Drag & Drop Delegate
-struct DayDropDelegate: DropDelegate {
-    @Binding var days: [WorkoutPlanDay]
-    let draggedIndex: Int
-    
-    func performDrop(info: DropInfo) -> Bool {
-        return true
-    }
-    
-    func dropEntered(info: DropInfo) {
-        guard let itemProvider = info.itemProviders(for: [UTType.text]).first else { return }
-        
-        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (item, error) in
-            guard let data = item as? Data,
-                  let sourceIndexString = String(data: data, encoding: .utf8),
-                  let sourceIndex = Int(sourceIndexString),
-                  sourceIndex != draggedIndex else { return }
-            
-            DispatchQueue.main.async {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                    let sourceDay = days[sourceIndex]
-                    days.remove(at: sourceIndex)
-                    
-                    let destinationIndex = sourceIndex < draggedIndex ? draggedIndex - 1 : draggedIndex
-                    days.insert(sourceDay, at: destinationIndex)
-                    
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                }
-            }
-        }
     }
 }
