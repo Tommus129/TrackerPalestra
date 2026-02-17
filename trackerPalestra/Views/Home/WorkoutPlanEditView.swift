@@ -68,9 +68,9 @@ struct WorkoutPlanEditView: View {
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
                                     HStack(spacing: 16) {
-                                        // Badge numero giorno MOLTO più visibile
+                                        // Badge numero giorno SQUADRATO
                                         ZStack {
-                                            Circle()
+                                            Rectangle()
                                                 .fill(
                                                     LinearGradient(
                                                         colors: [
@@ -83,7 +83,7 @@ struct WorkoutPlanEditView: View {
                                                 )
                                                 .frame(width: 52, height: 52)
                                                 .overlay(
-                                                    Circle()
+                                                    Rectangle()
                                                         .strokeBorder(Color.acidGreen.opacity(0.7), lineWidth: 2.5)
                                                 )
                                                 .shadow(color: Color.acidGreen.opacity(0.5), radius: 10, y: 5)
@@ -138,7 +138,7 @@ struct WorkoutPlanEditView: View {
                                 addDay()
                             } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: "plus.circle.fill")
+                                    Image(systemName: "plus.square.fill")
                                         .font(.system(size: 24))
                                     Text("Aggiungi Giorno")
                                         .font(.system(size: 17, weight: .black))
