@@ -56,14 +56,7 @@ struct WorkoutPlanEditView: View {
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [Color.acidGreen.opacity(0.7), Color.acidGreen.opacity(0.4)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 2.5
-                                        )
+                                        .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2.5)
                                 )
                                 .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
                         )
@@ -91,14 +84,7 @@ struct WorkoutPlanEditView: View {
                                                 .frame(width: 52, height: 52)
                                                 .overlay(
                                                     Circle()
-                                                        .stroke(
-                                                            LinearGradient(
-                                                                colors: [Color.acidGreen.opacity(0.8), Color.acidGreen.opacity(0.5)],
-                                                                startPoint: .top,
-                                                                endPoint: .bottom
-                                                            ),
-                                                            lineWidth: 2.5
-                                                        )
+                                                        .strokeBorder(Color.acidGreen.opacity(0.7), lineWidth: 2.5)
                                                 )
                                                 .shadow(color: Color.acidGreen.opacity(0.5), radius: 10, y: 5)
                                             
@@ -134,7 +120,7 @@ struct WorkoutPlanEditView: View {
                                         .fill(Color.white.opacity(0.08))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                                         )
                                         .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                                 )
