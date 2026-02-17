@@ -49,7 +49,7 @@ struct DayDetailView: View {
                         .foregroundColor(.white)
                         .padding(.vertical, 8)
                 } header: {
-                    headerView(icon: "calendar.circle.fill", text: "NOME GIORNO")
+                    headerView(icon: "calendar", text: "NOME GIORNO")
                 }
                 .listRowBackground(
                     Rectangle()
@@ -82,7 +82,7 @@ struct DayDetailView: View {
                         }
                     }
                 } header: {
-                    headerView(icon: "list.bullet.clipboard.fill", text: "ESERCIZI IN LISTA")
+                    headerView(icon: "list.bullet.clipboard", text: "ESERCIZI IN LISTA")
                 }
                 .listRowBackground(
                     Rectangle()
@@ -99,7 +99,7 @@ struct DayDetailView: View {
                 Section {
                     newExerciseFormView
                 } header: {
-                    headerView(icon: "plus.app.fill", text: "NUOVO ESERCIZIO / CIRCUITO")
+                    headerView(icon: "plus.square", text: "NUOVO ESERCIZIO / CIRCUITO")
                 }
                 .listRowBackground(
                     Rectangle()
@@ -123,22 +123,23 @@ struct DayDetailView: View {
     
     @ViewBuilder
     private func headerView(icon: String, text: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .black))
+                .font(.system(size: 14, weight: .bold))
             Text(text)
                 .font(.system(size: 12, weight: .black))
-                .tracking(1.3)
+                .tracking(1.5)
         }
         .foregroundColor(.acidGreen)
+        .padding(.bottom, 4)
     }
     
     @ViewBuilder
     private func exerciseRowView(exercise: WorkoutPlanExercise) -> some View {
-        HStack(spacing: 14) {
-            // Icona esercizio MOLTO più visibile
+        HStack(spacing: 16) {
+            // Icona esercizio quadrata
             ZStack {
-                Circle()
+                Rectangle()
                     .fill(
                         LinearGradient(
                             colors: exercise.isBodyweight ? 
@@ -148,9 +149,9 @@ struct DayDetailView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 50, height: 50)
+                    .frame(width: 48, height: 48)
                     .overlay(
-                        Circle()
+                        Rectangle()
                             .strokeBorder(
                                 exercise.isBodyweight ? 
                                     Color.acidGreen.opacity(0.9) : 
@@ -177,7 +178,7 @@ struct DayDetailView: View {
                     .foregroundColor(.white)
                 
                 HStack(spacing: 8) {
-                    // Serie e Reps con MASSIMO contrasto
+                    // Serie e Reps squadrate
                     HStack(spacing: 4) {
                         Text("\(exercise.defaultSets)")
                             .font(.system(size: 16, weight: .black))
@@ -189,13 +190,13 @@ struct DayDetailView: View {
                             .font(.system(size: 16, weight: .black))
                             .foregroundColor(.acidGreen)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
                     .background(
-                        Capsule()
+                        Rectangle()
                             .fill(Color.acidGreen.opacity(0.2))
                             .overlay(
-                                Capsule()
+                                Rectangle()
                                     .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                             )
                     )
@@ -204,10 +205,10 @@ struct DayDetailView: View {
                         Text("BW")
                             .font(.system(size: 12, weight: .black))
                             .foregroundColor(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(
-                                Capsule()
+                                Rectangle()
                                     .fill(Color.acidGreen)
                                     .shadow(color: Color.acidGreen.opacity(0.6), radius: 8, y: 4)
                             )
@@ -244,7 +245,7 @@ struct DayDetailView: View {
                         )
                 )
             
-            // Suggestions
+            // Suggestions squadrate
             if !suggestions.isEmpty {
                 suggestionsScrollView
             }
@@ -267,11 +268,11 @@ struct DayDetailView: View {
             // Serie e Reps
             steppersView
             
-            // Toggle Corpo Libero
+            // Toggle Corpo Libero squadrato
             Toggle(isOn: $newExerciseIsBodyweight) {
                 HStack(spacing: 10) {
                     ZStack {
-                        Circle()
+                        Rectangle()
                             .fill(
                                 LinearGradient(
                                     colors: newExerciseIsBodyweight ? 
@@ -283,7 +284,7 @@ struct DayDetailView: View {
                             )
                             .frame(width: 36, height: 36)
                             .overlay(
-                                Circle()
+                                Rectangle()
                                     .strokeBorder(
                                         newExerciseIsBodyweight ? 
                                             Color.acidGreen.opacity(0.7) : 
@@ -321,7 +322,7 @@ struct DayDetailView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 9)
                             .background(
-                                Capsule()
+                                Rectangle()
                                     .fill(
                                         LinearGradient(
                                             colors: [
@@ -333,7 +334,7 @@ struct DayDetailView: View {
                                         )
                                     )
                                     .overlay(
-                                        Capsule()
+                                        Rectangle()
                                             .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                                     )
                                     .shadow(color: Color.acidGreen.opacity(0.4), radius: 8, y: 4)
@@ -392,7 +393,7 @@ struct DayDetailView: View {
     private var addExerciseButton: some View {
         Button(action: addExercise) {
             HStack(spacing: 10) {
-                Image(systemName: "plus.circle.fill")
+                Image(systemName: "plus.square.fill")
                     .font(.system(size: 24))
                 Text("Aggiungi Esercizio")
                     .font(.system(size: 17, weight: .black))
