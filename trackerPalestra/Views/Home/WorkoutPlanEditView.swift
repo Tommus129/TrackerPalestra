@@ -57,10 +57,6 @@ struct WorkoutPlanEditView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: standardCornerRadius)
-                                        .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2.5)
-                                )
                                 .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
                         )
                         .listRowSeparator(.hidden)
