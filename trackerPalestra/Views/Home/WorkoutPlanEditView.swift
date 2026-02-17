@@ -12,121 +12,126 @@ struct WorkoutPlanEditView: View {
                 Color.customBlack.ignoresSafeArea()
                 
                 if let planBinding = Binding($viewModel.editingPlan) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 20) {
-                            // Header: Nome Scheda
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("NOME SCHEDA")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.acidGreen)
-                                    .tracking(2)
-                                
-                                TextField("Es: Push Pull Legs", text: planBinding.name)
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding(16)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .fill(Color.white.opacity(0.05))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 16)
-                                                    .stroke(Color.deepPurple.opacity(0.3), lineWidth: 2)
-                                            )
-                                    )
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                            
-                            // Stats Rapide
-                            HStack(spacing: 12) {
-                                statsCard(
-                                    icon: "calendar",
-                                    value: "\(planBinding.wrappedValue.days.count)",
-                                    label: "GIORNI"
-                                )
-                                
-                                statsCard(
-                                    icon: "figure.strengthtraining.traditional",
-                                    value: "\(totalExercises(plan: planBinding.wrappedValue))",
-                                    label: "ESERCIZI"
-                                )
-                            }
-                            .padding(.horizontal, 20)
-                            
-                            // Section Header
-                            HStack {
-                                Text("GIORNI ALLENAMENTO")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.acidGreen)
-                                    .tracking(2)
-                                Spacer()
-                                Text("Tieni premuto per riordinare")
-                                    .font(.system(size: 9, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.4))
-                                    .italic()
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 10)
-                            
-                            // Lista Giorni con Drag & Drop
-                            ForEach(Array(planBinding.wrappedValue.days.enumerated()), id: \.element.id) { index, day in
-                                DayCardView(
-                                    day: planBinding.days[index],
-                                    dayNumber: index + 1,
-                                    isExpanded: expandedDayIds.contains(day.id),
-                                    onToggleExpand: {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                            if expandedDayIds.contains(day.id) {
-                                                expandedDayIds.remove(day.id)
-                                            } else {
-                                                expandedDayIds.insert(day.id)
-                                            }
-                                        }
-                                    },
-                                    onDelete: {
-                                        withAnimation {
-                                            viewModel.editingPlan?.days.remove(at: index)
-                                        }
-                                    },
-                                    onDuplicate: {
-                                        duplicateDay(at: index)
-                                    }
-                                )
-                                .onDrag {
-                                    return NSItemProvider(object: String(index) as NSString)
-                                }
-                                .onDrop(of: [UTType.text], delegate: DayDropDelegate(
-                                    days: planBinding.days,
-                                    draggedIndex: index
-                                ))
-                                .environmentObject(viewModel)
-                            }
-                            .padding(.horizontal, 20)
-                            
-                            // Bottone Aggiungi Giorno
-                            Button {
-                                addDay()
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 20))
-                                    Text("AGGIUNGI GIORNO")
-                                        .font(.system(size: 13, weight: .black))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 18)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color.acidGreen.opacity(0.4), lineWidth: 2)
+                    VStack(spacing: 0) {
+                        // Custom Header
+                        customHeader
+                        
+                        ScrollView(showsIndicators: false) {
+                            VStack(spacing: 20) {
+                                // Header: Nome Scheda
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("NOME SCHEDA")
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.acidGreen)
+                                        .tracking(2)
+                                    
+                                    TextField("Es: Push Pull Legs", text: planBinding.name)
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(16)
                                         .background(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .fill(Color.acidGreen.opacity(0.05))
+                                                .fill(Color.white.opacity(0.05))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 16)
+                                                        .stroke(Color.deepPurple.opacity(0.3), lineWidth: 2)
+                                                )
                                         )
-                                )
-                                .foregroundColor(.acidGreen)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                                
+                                // Stats Rapide
+                                HStack(spacing: 12) {
+                                    statsCard(
+                                        icon: "calendar",
+                                        value: "\(planBinding.wrappedValue.days.count)",
+                                        label: "GIORNI"
+                                    )
+                                    
+                                    statsCard(
+                                        icon: "figure.strengthtraining.traditional",
+                                        value: "\(totalExercises(plan: planBinding.wrappedValue))",
+                                        label: "ESERCIZI"
+                                    )
+                                }
+                                .padding(.horizontal, 20)
+                                
+                                // Section Header
+                                HStack {
+                                    Text("GIORNI ALLENAMENTO")
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.acidGreen)
+                                        .tracking(2)
+                                    Spacer()
+                                    Text("Tieni premuto per riordinare")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.4))
+                                        .italic()
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 10)
+                                
+                                // Lista Giorni con Drag & Drop
+                                ForEach(Array(planBinding.wrappedValue.days.enumerated()), id: \.element.id) { index, day in
+                                    DayCardView(
+                                        day: planBinding.days[index],
+                                        dayNumber: index + 1,
+                                        isExpanded: expandedDayIds.contains(day.id),
+                                        onToggleExpand: {
+                                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                                if expandedDayIds.contains(day.id) {
+                                                    expandedDayIds.remove(day.id)
+                                                } else {
+                                                    expandedDayIds.insert(day.id)
+                                                }
+                                            }
+                                        },
+                                        onDelete: {
+                                            withAnimation {
+                                                viewModel.editingPlan?.days.remove(at: index)
+                                            }
+                                        },
+                                        onDuplicate: {
+                                            duplicateDay(at: index)
+                                        }
+                                    )
+                                    .onDrag {
+                                        return NSItemProvider(object: String(index) as NSString)
+                                    }
+                                    .onDrop(of: [UTType.text], delegate: DayDropDelegate(
+                                        days: planBinding.days,
+                                        draggedIndex: index
+                                    ))
+                                    .environmentObject(viewModel)
+                                }
+                                .padding(.horizontal, 20)
+                                
+                                // Bottone Aggiungi Giorno
+                                Button {
+                                    addDay()
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 20))
+                                        Text("AGGIUNGI GIORNO")
+                                            .font(.system(size: 13, weight: .black))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 18)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.acidGreen.opacity(0.4), lineWidth: 2)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .fill(Color.acidGreen.opacity(0.05))
+                                            )
+                                    )
+                                    .foregroundColor(.acidGreen)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 30)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 30)
                         }
                     }
                 } else {
@@ -138,38 +143,49 @@ struct WorkoutPlanEditView: View {
                     }
                 }
             }
-            .navigationTitle("MODIFICA SCHEDA")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    Button(action: {
+            .navigationBarHidden(true)
+        }
+    }
+    
+    // MARK: - Custom Header
+    private var customHeader: some View {
+        HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            
+            Spacer()
+            
+            Text("MODIFICA SCHEDA")
+                .font(.system(size: 16, weight: .black))
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Button {
+                viewModel.saveEditingPlan { success in
+                    if success {
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
                         dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white.opacity(0.4))
                     }
                 }
-                
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        viewModel.saveEditingPlan { success in
-                            if success {
-                                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                                dismiss()
-                            }
-                        }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("SALVA")
-                                .fontWeight(.black)
-                        }
-                        .foregroundColor(.acidGreen)
-                    }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22))
+                    Text("SALVA")
+                        .font(.system(size: 13, weight: .black))
                 }
+                .foregroundColor(.acidGreen)
             }
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.white.opacity(0.02))
     }
     
     // MARK: - Stats Card
