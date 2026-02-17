@@ -34,18 +34,27 @@ struct DayDetailView: View {
                 // SECTION NOME GIORNO
                 Section {
                     TextField("Nome giorno", text: $day.label)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.vertical, 4)
+                        .accentColor(.acidGreen)
                 } header: {
-                    Text("NOME GIORNO")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.gray)
+                    HStack {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.acidGreen)
+                        Text("NOME GIORNO")
+                    }
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.gray)
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color(UIColor.systemGray6).opacity(0.12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
+                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        )
                 )
                 .listRowSeparator(.hidden)
 
@@ -60,14 +69,22 @@ struct DayDetailView: View {
                         }
                     }
                 } header: {
-                    Text("ESERCIZI")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.gray)
+                    HStack {
+                        Image(systemName: "list.bullet")
+                            .foregroundColor(.acidGreen)
+                        Text("ESERCIZI")
+                    }
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.gray)
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color(UIColor.systemGray6).opacity(0.12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
+                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        )
                 )
                 .listRowSeparator(.hidden)
 
@@ -75,14 +92,22 @@ struct DayDetailView: View {
                 Section {
                     newExerciseFormView
                 } header: {
-                    Text("AGGIUNGI ESERCIZIO")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.gray)
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.acidGreen)
+                        Text("AGGIUNGI ESERCIZIO")
+                    }
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.gray)
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: standardCornerRadius)
                         .fill(Color(UIColor.systemGray6).opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: standardCornerRadius)
+                                .strokeBorder(Color.acidGreen.opacity(0.15), lineWidth: 1)
+                        )
                 )
                 .listRowSeparator(.hidden)
             }
@@ -99,10 +124,10 @@ struct DayDetailView: View {
     @ViewBuilder
     private func exerciseRowView(exercise: WorkoutPlanExercise) -> some View {
         HStack(spacing: 14) {
-            // Icona semplice
+            // Icona con tocco di colore
             ZStack {
                 Circle()
-                    .fill(Color(UIColor.systemGray5).opacity(0.2))
+                    .fill(Color.acidGreen.opacity(0.1))
                     .frame(width: 44, height: 44)
                 
                 Image(systemName: exercise.isBodyweight ? "figure.flexibility" : "dumbbell.fill")
@@ -117,16 +142,16 @@ struct DayDetailView: View {
                 
                 HStack(spacing: 8) {
                     Text("\(exercise.defaultSets) × \(exercise.defaultReps)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.gray)
+                        .font(.system(size: 15, weight: .bold)) // Font leggermente più evidente
+                        .foregroundColor(.acidGreen)           // Colore verde acido per i numeri
                     
                     if exercise.isBodyweight {
                         Text("BW")
-                            .font(.caption)
-                            .fontWeight(.bold)
+                            .font(.caption2)
+                            .fontWeight(.black)
                             .foregroundColor(.black)
                             .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, 3)
                             .background(
                                 Capsule()
                                     .fill(Color.acidGreen)
@@ -148,16 +173,21 @@ struct DayDetailView: View {
     }
     
     private var newExerciseFormView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) { // Spaziatura leggermente aumentata
             // Nome esercizio
             TextField("Nome esercizio", text: $newExerciseName)
-                .font(.system(size: 16))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white)
-                .padding(12)
+                .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.white.opacity(0.1))
+                        .fill(Color.white.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
                 )
+                .accentColor(.acidGreen)
             
             // Suggestions
             if !suggestions.isEmpty {
@@ -168,12 +198,17 @@ struct DayDetailView: View {
             TextField("Note (opzionale)", text: $newExerciseNotes, axis: .vertical)
                 .font(.system(size: 14))
                 .foregroundColor(.white)
-                .padding(12)
+                .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color.white.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
                 )
                 .lineLimit(2...4)
+                .accentColor(.acidGreen)
             
             // Serie e Reps
             steppersView
@@ -184,17 +219,24 @@ struct DayDetailView: View {
                 .tint(.acidGreen)
                 .padding(.vertical, 4)
             
-            // Bottone Aggiungi Semplice
+            // Bottone Aggiungi
             Button(action: addExercise) {
-                Text("Aggiungi")
-                    .font(.headline)
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(newExerciseName.isEmpty ? Color.gray : Color.acidGreen)
-                    )
+                HStack {
+                    Image(systemName: "plus")
+                        .fontWeight(.bold)
+                    Text("AGGIUNGI")
+                        .fontWeight(.bold)
+                        .tracking(1.0)
+                }
+                .font(.system(size: 15))
+                .foregroundColor(newExerciseName.isEmpty ? .white.opacity(0.3) : .black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(newExerciseName.isEmpty ? Color.white.opacity(0.1) : Color.acidGreen)
+                )
+                .animation(.easeInOut(duration: 0.2), value: newExerciseName.isEmpty)
             }
             .disabled(newExerciseName.isEmpty)
         }
@@ -211,55 +253,96 @@ struct DayDetailView: View {
                         Text(sug)
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
+                            .foregroundColor(.acidGreen) // Testo verde
+                            .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(Color.white.opacity(0.15))
+                                    .fill(Color.acidGreen.opacity(0.1)) // Sfondo verde leggerissimo
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(Color.acidGreen.opacity(0.3), lineWidth: 1)
+                                    )
                             )
                     }
                 }
             }
+            .padding(.bottom, 4)
         }
     }
     
     private var steppersView: some View {
         HStack(spacing: 12) {
             // Stepper Serie
-            HStack {
-                Text("Serie")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                Spacer()
-                Text("\(newExerciseSets)")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                Stepper("", value: $newExerciseSets, in: 1...15)
-                    .labelsHidden()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("SERIE")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.acidGreen)
+                        .tracking(1.0)
+                    Spacer()
+                }
+                .padding(.bottom, 6)
+                
+                HStack {
+                    Text("\(newExerciseSets)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(width: 30)
+                    
+                    Spacer()
+                    
+                    Stepper("", value: $newExerciseSets, in: 1...15)
+                        .labelsHidden()
+                        .colorScheme(.dark) // Forza controlli scuri per contrasto
+                }
             }
-            .padding(10)
+            .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             )
             
             // Stepper Reps
-            HStack {
-                Text("Reps")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                Spacer()
-                Text("\(newExerciseReps)")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                Stepper("", value: $newExerciseReps, in: 1...50)
-                    .labelsHidden()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("REPS")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.acidGreen)
+                        .tracking(1.0)
+                    Spacer()
+                }
+                .padding(.bottom, 6)
+                
+                HStack {
+                    Text("\(newExerciseReps)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(width: 30)
+                    
+                    Spacer()
+                    
+                    Stepper("", value: $newExerciseReps, in: 1...50)
+                        .labelsHidden()
+                        .colorScheme(.dark)
+                }
             }
-            .padding(10)
+            .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             )
         }
     }
