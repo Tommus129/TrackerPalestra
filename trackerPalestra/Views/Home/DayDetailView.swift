@@ -47,12 +47,12 @@ struct DayDetailView: View {
                     TextField("Nome giorno", text: $day.label)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 8)
                 } header: {
                     headerView(icon: "calendar.circle.fill", text: "NOME GIORNO")
                 }
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 14)
+                    Rectangle()
                         .fill(
                             LinearGradient(
                                 colors: [
@@ -64,7 +64,7 @@ struct DayDetailView: View {
                             )
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            Rectangle()
                                 .strokeBorder(Color.acidGreen.opacity(0.6), lineWidth: 2)
                         )
                         .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
@@ -85,10 +85,10 @@ struct DayDetailView: View {
                     headerView(icon: "list.bullet.clipboard.fill", text: "ESERCIZI IN LISTA")
                 }
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 14)
+                    Rectangle()
                         .fill(Color.white.opacity(0.08))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            Rectangle()
                                 .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                         )
                         .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
@@ -102,10 +102,10 @@ struct DayDetailView: View {
                     headerView(icon: "plus.app.fill", text: "NUOVO ESERCIZIO / CIRCUITO")
                 }
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 14)
+                    Rectangle()
                         .fill(Color.white.opacity(0.06))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            Rectangle()
                                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
@@ -230,16 +230,16 @@ struct DayDetailView: View {
     
     private var newExerciseFormView: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Nome esercizio con MASSIMO contrasto
+            // Nome esercizio
             TextField("Nome esercizio", text: $newExerciseName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    Rectangle()
                         .fill(Color.white.opacity(0.12))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            Rectangle()
                                 .strokeBorder(Color.white.opacity(0.3), lineWidth: 2)
                         )
                 )
@@ -255,10 +255,10 @@ struct DayDetailView: View {
                 .foregroundColor(.white)
                 .padding(12)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    Rectangle()
                         .fill(Color.white.opacity(0.08))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            Rectangle()
                                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
@@ -267,7 +267,7 @@ struct DayDetailView: View {
             // Serie e Reps
             steppersView
             
-            // Toggle Corpo Libero con icona MOLTO visibile
+            // Toggle Corpo Libero
             Toggle(isOn: $newExerciseIsBodyweight) {
                 HStack(spacing: 10) {
                     ZStack {
@@ -356,10 +356,10 @@ struct DayDetailView: View {
                     .foregroundColor(.white)
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 10)
+                        Rectangle()
                             .fill(Color.white.opacity(0.1))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                Rectangle()
                                     .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
@@ -376,10 +376,10 @@ struct DayDetailView: View {
                     .foregroundColor(.white)
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 10)
+                        Rectangle()
                             .fill(Color.white.opacity(0.1))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                Rectangle()
                                     .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
@@ -410,7 +410,7 @@ struct DayDetailView: View {
     }
     
     private var buttonBackground: some View {
-        RoundedRectangle(cornerRadius: 14)
+        Rectangle()
             .fill(
                 newExerciseName.isEmpty ? 
                 AnyShapeStyle(Color.white.opacity(0.12)) :
@@ -423,7 +423,7 @@ struct DayDetailView: View {
                 )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
+                Rectangle()
                     .strokeBorder(
                         newExerciseName.isEmpty ? 
                             Color.white.opacity(0.3) : 
