@@ -18,7 +18,7 @@ struct DayDetailView: View {
         }
     }
     
-    // Background più scuro e premium
+    // Background scuro
     private var backgroundGradient: some View {
         ZStack {
             Color.black
@@ -56,8 +56,8 @@ struct DayDetailView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.deepPurple.opacity(0.3),
-                                    Color.deepPurple.opacity(0.2)
+                                    Color.deepPurple.opacity(0.4),
+                                    Color.deepPurple.opacity(0.3)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -67,14 +67,14 @@ struct DayDetailView: View {
                             RoundedRectangle(cornerRadius: 14)
                                 .stroke(
                                     LinearGradient(
-                                        colors: [Color.acidGreen.opacity(0.5), Color.acidGreen.opacity(0.2)],
+                                        colors: [Color.acidGreen.opacity(0.7), Color.acidGreen.opacity(0.4)],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     ),
-                                    lineWidth: 2
+                                    lineWidth: 2.5
                                 )
                         )
-                        .shadow(color: Color.deepPurple.opacity(0.4), radius: 10, y: 5)
+                        .shadow(color: Color.deepPurple.opacity(0.5), radius: 12, y: 6)
                 )
                 .listRowSeparator(.hidden)
 
@@ -93,12 +93,12 @@ struct DayDetailView: View {
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(Color.white.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 1.5)
+                                .stroke(Color.white.opacity(0.25), lineWidth: 2)
                         )
-                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
+                        .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                 )
                 .listRowSeparator(.hidden)
 
@@ -110,10 +110,10 @@ struct DayDetailView: View {
                 }
                 .listRowBackground(
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.white.opacity(0.04))
+                        .fill(Color.white.opacity(0.06))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
                 .listRowSeparator(.hidden)
@@ -132,10 +132,10 @@ struct DayDetailView: View {
     private func headerView(icon: String, text: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 13, weight: .black))
             Text(text)
-                .font(.system(size: 11, weight: .black))
-                .tracking(1.2)
+                .font(.system(size: 12, weight: .black))
+                .tracking(1.3)
         }
         .foregroundColor(.acidGreen)
     }
@@ -143,111 +143,111 @@ struct DayDetailView: View {
     @ViewBuilder
     private func exerciseRowView(exercise: WorkoutPlanExercise) -> some View {
         HStack(spacing: 14) {
-            // Icona esercizio con più contrasto
+            // Icona esercizio MOLTO più visibile
             ZStack {
                 Circle()
                     .fill(
                         LinearGradient(
                             colors: exercise.isBodyweight ? 
-                                [Color.acidGreen.opacity(0.4), Color.acidGreen.opacity(0.25)] :
-                                [Color.deepPurple.opacity(0.5), Color.deepPurple.opacity(0.3)],
+                                [Color.acidGreen.opacity(0.5), Color.acidGreen.opacity(0.35)] :
+                                [Color.deepPurple.opacity(0.6), Color.deepPurple.opacity(0.4)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 46, height: 46)
+                    .frame(width: 50, height: 50)
                     .overlay(
                         Circle()
                             .stroke(
                                 exercise.isBodyweight ? 
-                                    Color.acidGreen.opacity(0.7) : 
-                                    Color.deepPurple.opacity(0.6),
-                                lineWidth: 2
+                                    Color.acidGreen.opacity(0.9) : 
+                                    Color.white.opacity(0.5),
+                                lineWidth: 2.5
                             )
                     )
                     .shadow(
                         color: exercise.isBodyweight ? 
-                            Color.acidGreen.opacity(0.4) : 
-                            Color.deepPurple.opacity(0.3),
-                        radius: 8,
-                        y: 4
+                            Color.acidGreen.opacity(0.5) : 
+                            Color.deepPurple.opacity(0.4),
+                        radius: 10,
+                        y: 5
                     )
                 
                 Image(systemName: exercise.isBodyweight ? "figure.flexibility" : "dumbbell.fill")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 20, weight: .black))
                     .foregroundColor(exercise.isBodyweight ? .acidGreen : .white)
             }
             
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(exercise.name)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
                 
                 HStack(spacing: 8) {
-                    // Serie e Reps con più contrasto
+                    // Serie e Reps con MASSIMO contrasto
                     HStack(spacing: 4) {
                         Text("\(exercise.defaultSets)")
-                            .font(.system(size: 15, weight: .black))
+                            .font(.system(size: 16, weight: .black))
                             .foregroundColor(.acidGreen)
                         Text("×")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.5))
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.6))
                         Text("\(exercise.defaultReps)")
-                            .font(.system(size: 15, weight: .black))
+                            .font(.system(size: 16, weight: .black))
                             .foregroundColor(.acidGreen)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color.acidGreen.opacity(0.15))
+                            .fill(Color.acidGreen.opacity(0.2))
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.acidGreen.opacity(0.4), lineWidth: 1.5)
+                                    .stroke(Color.acidGreen.opacity(0.6), lineWidth: 2)
                             )
                     )
                     
                     if exercise.isBodyweight {
                         Text("BW")
-                            .font(.system(size: 11, weight: .black))
+                            .font(.system(size: 12, weight: .black))
                             .foregroundColor(.black)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(
                                 Capsule()
                                     .fill(Color.acidGreen)
-                                    .shadow(color: Color.acidGreen.opacity(0.5), radius: 6, y: 3)
+                                    .shadow(color: Color.acidGreen.opacity(0.6), radius: 8, y: 4)
                             )
                     }
                 }
                 
                 if !exercise.notes.isEmpty {
                     Text(exercise.notes)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .italic()
-                        .foregroundColor(.acidGreen.opacity(0.8))
-                        .padding(.top, 2)
+                        .foregroundColor(.acidGreen.opacity(0.85))
+                        .padding(.top, 3)
                 }
             }
             
             Spacer()
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
     
     private var newExerciseFormView: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Nome esercizio con più contrasto
+            // Nome esercizio con MASSIMO contrasto
             TextField("Nome esercizio", text: $newExerciseName)
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(Color.white.opacity(0.12))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
                         )
                 )
             
@@ -258,15 +258,15 @@ struct DayDetailView: View {
             
             // Note circuito
             TextField("Descrizione circuito (opzionale)", text: $newExerciseNotes, axis: .vertical)
-                .font(.system(size: 14))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.white)
                 .padding(12)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(Color.white.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
                         )
                 )
                 .lineLimit(2...4)
@@ -274,24 +274,41 @@ struct DayDetailView: View {
             // Serie e Reps
             steppersView
             
-            // Toggle Corpo Libero con icona più visibile
+            // Toggle Corpo Libero con icona MOLTO visibile
             Toggle(isOn: $newExerciseIsBodyweight) {
                 HStack(spacing: 10) {
                     ZStack {
                         Circle()
-                            .fill(Color.acidGreen.opacity(newExerciseIsBodyweight ? 0.2 : 0.1))
-                            .frame(width: 32, height: 32)
+                            .fill(
+                                LinearGradient(
+                                    colors: newExerciseIsBodyweight ? 
+                                        [Color.acidGreen.opacity(0.35), Color.acidGreen.opacity(0.2)] :
+                                        [Color.white.opacity(0.15), Color.white.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 36, height: 36)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        newExerciseIsBodyweight ? 
+                                            Color.acidGreen.opacity(0.7) : 
+                                            Color.white.opacity(0.3),
+                                        lineWidth: 2
+                                    )
+                            )
                         Image(systemName: "figure.flexibility")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(newExerciseIsBodyweight ? .acidGreen : .white.opacity(0.6))
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundColor(newExerciseIsBodyweight ? .acidGreen : .white.opacity(0.7))
                     }
                     Text("Corpo Libero")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
             .tint(.acidGreen)
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
             
             // Bottone Aggiungi
             addExerciseButton
@@ -306,17 +323,17 @@ struct DayDetailView: View {
                         newExerciseName = sug
                     } label: {
                         Text(sug)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.acidGreen)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
                             .background(
                                 Capsule()
                                     .fill(
                                         LinearGradient(
                                             colors: [
-                                                Color.acidGreen.opacity(0.25),
-                                                Color.acidGreen.opacity(0.15)
+                                                Color.acidGreen.opacity(0.3),
+                                                Color.acidGreen.opacity(0.2)
                                             ],
                                             startPoint: .leading,
                                             endPoint: .trailing
@@ -324,9 +341,9 @@ struct DayDetailView: View {
                                     )
                                     .overlay(
                                         Capsule()
-                                            .stroke(Color.acidGreen.opacity(0.5), lineWidth: 1.5)
+                                            .stroke(Color.acidGreen.opacity(0.6), lineWidth: 2)
                                     )
-                                    .shadow(color: Color.acidGreen.opacity(0.3), radius: 6, y: 3)
+                                    .shadow(color: Color.acidGreen.opacity(0.4), radius: 8, y: 4)
                             )
                     }
                 }
@@ -338,19 +355,19 @@ struct DayDetailView: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("SERIE")
-                    .font(.system(size: 11, weight: .black))
+                    .font(.system(size: 12, weight: .black))
                     .foregroundColor(.acidGreen)
-                    .tracking(1)
+                    .tracking(1.2)
                 Stepper("\(newExerciseSets)", value: $newExerciseSets, in: 1...15)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 17, weight: .black))
                     .foregroundColor(.white)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Color.white.opacity(0.1))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 1.5)
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
             }
@@ -358,19 +375,19 @@ struct DayDetailView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("RIPETIZIONI")
-                    .font(.system(size: 11, weight: .black))
+                    .font(.system(size: 12, weight: .black))
                     .foregroundColor(.acidGreen)
-                    .tracking(1)
+                    .tracking(1.2)
                 Stepper("\(newExerciseReps)", value: $newExerciseReps, in: 1...50)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 17, weight: .black))
                     .foregroundColor(.white)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Color.white.opacity(0.1))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 1.5)
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 2)
                             )
                     )
             }
@@ -383,27 +400,27 @@ struct DayDetailView: View {
         Button(action: addExercise) {
             HStack(spacing: 10) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 22))
+                    .font(.system(size: 24))
                 Text("Aggiungi Esercizio")
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 17, weight: .black))
             }
             .frame(maxWidth: .infinity)
             .foregroundColor(buttonForegroundColor)
-            .padding(.vertical, 16)
+            .padding(.vertical, 17)
             .background(buttonBackground)
         }
         .disabled(newExerciseName.isEmpty)
     }
     
     private var buttonForegroundColor: Color {
-        newExerciseName.isEmpty ? .white.opacity(0.4) : .black
+        newExerciseName.isEmpty ? .white.opacity(0.5) : .black
     }
     
     private var buttonBackground: some View {
         RoundedRectangle(cornerRadius: 14)
             .fill(
                 newExerciseName.isEmpty ? 
-                AnyShapeStyle(Color.white.opacity(0.08)) :
+                AnyShapeStyle(Color.white.opacity(0.12)) :
                 AnyShapeStyle(
                     LinearGradient(
                         colors: [Color.acidGreen, Color.acidGreen.opacity(0.85)],
@@ -416,15 +433,15 @@ struct DayDetailView: View {
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(
                         newExerciseName.isEmpty ? 
-                            Color.white.opacity(0.2) : 
+                            Color.white.opacity(0.3) : 
                             Color.clear,
-                        lineWidth: 1.5
+                        lineWidth: 2
                     )
             )
             .shadow(
-                color: newExerciseName.isEmpty ? Color.clear : Color.acidGreen.opacity(0.5),
-                radius: 12,
-                y: 6
+                color: newExerciseName.isEmpty ? Color.clear : Color.acidGreen.opacity(0.6),
+                radius: 14,
+                y: 7
             )
     }
 
