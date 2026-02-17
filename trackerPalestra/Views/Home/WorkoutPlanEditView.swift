@@ -141,23 +141,24 @@ struct WorkoutPlanEditView: View {
             .navigationTitle("MODIFICA SCHEDA")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: {
                         dismiss()
-                    } label: {
+                    }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.white.opacity(0.4))
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: {
                         viewModel.saveEditingPlan { success in
                             if success {
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 dismiss()
                             }
                         }
-                    } label: {
+                    }) {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
                             Text("SALVA")
