@@ -22,15 +22,24 @@ struct WorkoutPlanEditView: View {
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(.vertical, 4)
+                                .accentColor(.acidGreen)
                         } header: {
-                            Text("NOME SCHEDA")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.gray)
+                            HStack {
+                                Image(systemName: "doc.text")
+                                    .foregroundColor(.acidGreen)
+                                Text("NOME SCHEDA")
+                            }
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gray)
                         }
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: standardCornerRadius)
                                 .fill(Color(UIColor.systemGray6).opacity(0.12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: standardCornerRadius)
+                                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                )
                         )
                         .listRowSeparator(.hidden)
 
@@ -39,33 +48,47 @@ struct WorkoutPlanEditView: View {
                             // Ciclo sicuro sui Binding degli elementi
                             ForEach(planBinding.days) { $day in
                                 NavigationLink(destination: DayDetailView(day: $day).environmentObject(viewModel)) {
-                                    HStack(spacing: 12) {
-                                        // Badge numero giorno Semplice
+                                    HStack(spacing: 14) {
+                                        // Badge numero giorno con tocco di colore
                                         ZStack {
                                             Circle()
-                                                .fill(Color(UIColor.systemGray5).opacity(0.3))
-                                                .frame(width: 36, height: 36)
+                                                .fill(Color.acidGreen.opacity(0.1))
+                                                .frame(width: 40, height: 40)
+                                                .overlay(
+                                                    Circle()
+                                                        .strokeBorder(Color.acidGreen.opacity(0.3), lineWidth: 1)
+                                                )
                                             
                                             Text("\(dayNumber(for: day.id))")
                                                 .font(.headline)
-                                                .foregroundColor(.white)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.acidGreen)
                                         }
                                         
-                                        VStack(alignment: .leading, spacing: 2) {
+                                        VStack(alignment: .leading, spacing: 4) {
                                             Text(day.label)
                                                 .font(.system(size: 16, weight: .semibold))
                                                 .foregroundColor(.white)
                                             
-                                            Text("\(day.exercises.count) esercizi")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "dumbbell.fill")
+                                                    .font(.caption2)
+                                                Text("\(day.exercises.count) esercizi")
+                                                    .font(.caption)
+                                                    .fontWeight(.medium)
+                                            }
+                                            .foregroundColor(.gray)
                                         }
                                     }
-                                    .padding(.vertical, 4)
+                                    .padding(.vertical, 6)
                                 }
                                 .listRowBackground(
                                     RoundedRectangle(cornerRadius: standardCornerRadius)
                                         .fill(Color(UIColor.systemGray6).opacity(0.12))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: standardCornerRadius)
+                                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                        )
                                 )
                                 .listRowSeparator(.hidden)
                             }
@@ -75,34 +98,46 @@ struct WorkoutPlanEditView: View {
                                 }
                             }
 
-                            // BOTTONE AGGIUNGI GIORNO SEMPLICE
+                            // BOTTONE AGGIUNGI GIORNO
                             Button {
                                 addDay()
                             } label: {
                                 HStack {
-                                    Image(systemName: "plus.circle.fill")
-                                    Text("Aggiungi Giorno")
-                                        .fontWeight(.medium)
+                                    Image(systemName: "plus")
+                                        .fontWeight(.bold)
+                                    Text("AGGIUNGI GIORNO")
+                                        .fontWeight(.bold)
+                                        .tracking(1.0)
                                 }
-                                .foregroundColor(.acidGreen)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 8)
+                                .font(.system(size: 15))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.acidGreen)
+                                )
                             }
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
+                            .padding(.top, 4)
                         } header: {
-                            Text("GIORNI DI ALLENAMENTO")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.gray)
-                                .padding(.top, 8)
+                            HStack {
+                                Image(systemName: "calendar")
+                                    .foregroundColor(.acidGreen)
+                                Text("GIORNI DI ALLENAMENTO")
+                            }
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gray)
+                            .padding(.top, 8)
                         }
                     }
                     .scrollContentBackground(.hidden)
                 } else {
                     VStack(spacing: 16) {
                         ProgressView()
-                            .tint(.gray)
+                            .tint(.acidGreen)
                         Text("Caricamento...")
                             .font(.caption)
                             .foregroundColor(.gray)
@@ -118,7 +153,7 @@ struct WorkoutPlanEditView: View {
                     Button("Annulla") {
                         dismiss()
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(.white.opacity(0.7))
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Salva") {
