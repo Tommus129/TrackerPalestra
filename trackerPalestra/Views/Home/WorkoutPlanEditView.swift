@@ -88,9 +88,7 @@ struct WorkoutPlanEditView: View {
                                             }
                                         },
                                         onDelete: {
-                                            withAnimation {
-                                                viewModel.editingPlan?.days.remove(at: index)
-                                            }
+                                            deleteDay(at: index)
                                         },
                                         onDuplicate: {
                                             duplicateDay(at: index)
@@ -227,6 +225,15 @@ struct WorkoutPlanEditView: View {
     // MARK: - Helper Functions
     private func totalExercises(plan: WorkoutPlan) -> Int {
         return plan.days.reduce(0) { $0 + $1.exercises.count }
+    }
+    
+    private func deleteDay(at index: Int) {
+        guard var plan = viewModel.editingPlan, index < plan.days.count else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            plan.days.remove(at: index)
+            viewModel.editingPlan = plan
+        }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
     private func addDay() {
