@@ -338,7 +338,7 @@ struct DayEditorView: View {
             isBodyweight: newExerciseIsBodyweight
         )
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        _ = withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             day.exercises.append(ex)
         }
         
@@ -353,7 +353,7 @@ struct DayEditorView: View {
 
     private func deleteExercise(_ exercise: WorkoutPlanExercise) {
         if let idx = day.exercises.firstIndex(where: { $0.id == exercise.id }) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            _ = withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 day.exercises.remove(at: idx)
             }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
