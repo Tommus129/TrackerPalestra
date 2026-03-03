@@ -165,7 +165,7 @@ struct ExerciseItemRow: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                 HStack(spacing: 6) {
-                    Text("\(exercise.sets) \u00d7")
+                    Text("\(exercise.sets) ×")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white.opacity(0.6))
                     Text(exercise.repsDisplay)
@@ -230,7 +230,7 @@ struct SupersetItemRow: View {
                         Text(ex.name)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.white)
-                        Text("\(ex.sets) \u00d7 \(ex.repsDisplay)")
+                        Text("\(ex.sets) × \(ex.repsDisplay)")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.acidGreen)
                     }
@@ -418,7 +418,7 @@ struct AddExerciseSheet: View {
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             label("NOTE")
-            TextField("Es. recupero 2', cadenza lenta\u2026", text: $notes, axis: .vertical)
+            TextField("Es. recupero 2', cadenza lenta…", text: $notes, axis: .vertical)
                 .foregroundColor(.white).padding(14).background(fieldBg).lineLimit(2...4).accentColor(.acidGreen)
         }
     }
@@ -461,7 +461,7 @@ struct AddExerciseSheet: View {
     }
 }
 
-// MARK: - SupersetExerciseState (stato locale per ogni esercizio nel superset)
+// MARK: - SupersetExState
 
 private struct SupersetExState {
     var name: String = ""
@@ -498,14 +498,12 @@ struct AddSupersetSheet: View {
                 Color.black.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        // Nome superset
                         VStack(alignment: .leading, spacing: 8) {
                             label("NOME SUPERSET")
                             TextField("Es. A1/A2", text: $supersetName)
                                 .foregroundColor(.white).padding(14).background(fieldBg).accentColor(.acidGreen)
                         }
 
-                        // Recupero
                         VStack(alignment: .leading, spacing: 8) {
                             label("RECUPERO DOPO BLOCCO (secondi)")
                             HStack(spacing: 16) {
@@ -518,7 +516,6 @@ struct AddSupersetSheet: View {
                             .padding(14).background(fieldBg)
                         }
 
-                        // Esercizi
                         VStack(alignment: .leading, spacing: 12) {
                             label("ESERCIZI NEL SUPERSET")
                             ForEach(exStates.indices, id: \.self) { i in
@@ -565,8 +562,6 @@ struct AddSupersetSheet: View {
     @ViewBuilder
     private func supersetExRow(index i: Int) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-
-            // Nome + elimina
             HStack {
                 Text("\(i + 1).")
                     .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
@@ -580,7 +575,6 @@ struct AddSupersetSheet: View {
             }
             .padding(12).background(fieldBg)
 
-            // Serie
             HStack(spacing: 16) {
                 Text("SERIE").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                 stepButton(systemName: "minus") {
@@ -601,7 +595,6 @@ struct AddSupersetSheet: View {
             }
             .padding(10).background(fieldBg)
 
-            // Ripetizioni con toggle
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("RIPETIZIONI").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
