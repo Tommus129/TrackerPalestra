@@ -1,13 +1,19 @@
 import SwiftUI
 
+// MARK: - Sheet type
+
+private enum AddSheetType: Identifiable {
+    case exercise, superset
+    var id: Int { hashValue }
+}
+
 // MARK: - DayDetailView
 
 struct DayDetailView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Binding var day: WorkoutPlanDay
 
-    @State private var showAddSheet = false
-    @State private var addingSuperset = false
+    @State private var activeSheet: AddSheetType?
 
     private let corner: CGFloat = 12
 
@@ -16,7 +22,6 @@ struct DayDetailView: View {
             Color.black.ignoresSafeArea()
 
             List {
-                // Nome giorno
                 Section {
                     TextField("Nome giorno", text: $day.label)
                         .font(.system(size: 17, weight: .semibold))
@@ -27,7 +32,6 @@ struct DayDetailView: View {
                 .listRowBackground(rowBg)
                 .listRowSeparator(.hidden)
 
-                // Lista items
                 Section {
                     ForEach(day.items.indices, id: \.self) { idx in
                         itemRow(idx: idx)
@@ -42,7 +46,6 @@ struct DayDetailView: View {
                 .listRowBackground(rowBg)
                 .listRowSeparator(.hidden)
 
-                // Bottoni aggiungi
                 Section {
                     addButtons
                 }
@@ -56,11 +59,12 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .sheet(isPresented: $showAddSheet) {
-            if addingSuperset {
-                AddSupersetSheet(day: $day)
-            } else {
+        .sheet(item: $activeSheet) { type in
+            switch type {
+            case .exercise:
                 AddExerciseSheet(day: $day, viewModel: viewModel)
+            case .superset:
+                AddSupersetSheet(day: $day)
             }
         }
         .onAppear { migrateLegacyIfNeeded() }
@@ -74,15 +78,11 @@ struct DayDetailView: View {
         switch item.kind {
         case .exercise:
             if let ex = item.exercise {
-                ExerciseItemRow(exercise: ex) {
-                    removeItem(at: idx)
-                }
+                ExerciseItemRow(exercise: ex) { removeItem(at: idx) }
             }
         case .superset:
             if let ss = item.superset {
-                SupersetItemRow(superset: ss) {
-                    removeItem(at: idx)
-                }
+                SupersetItemRow(superset: ss) { removeItem(at: idx) }
             }
         }
     }
@@ -98,10 +98,7 @@ struct DayDetailView: View {
 
     private var addButtons: some View {
         VStack(spacing: 10) {
-            Button {
-                addingSuperset = false
-                showAddSheet = true
-            } label: {
+            Button { activeSheet = .exercise } label: {
                 Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(0.8)
@@ -111,10 +108,7 @@ struct DayDetailView: View {
                     .background(RoundedRectangle(cornerRadius: corner).fill(Color.acidGreen))
             }
 
-            Button {
-                addingSuperset = true
-                showAddSheet = true
-            } label: {
+            Button { activeSheet = .superset } label: {
                 Label("AGGIUNGI SUPERSET", systemImage: "link")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(0.8)
@@ -217,7 +211,7 @@ struct SupersetItemRow: View {
             HStack {
                 Label(superset.name, systemImage: "link")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.orange)
+                    .foregroundColor(.acidGreen)
                 Spacer()
                 Text("Rec. \(superset.restAfterSeconds)\"")
                     .font(.caption).foregroundColor(.gray)
@@ -235,7 +229,7 @@ struct SupersetItemRow: View {
                 HStack(spacing: 10) {
                     Text("\(i + 1).")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.orange.opacity(0.7))
+                        .foregroundColor(.acidGreen.opacity(0.8))
                         .frame(width: 18)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ex.name)
@@ -252,8 +246,8 @@ struct SupersetItemRow: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.orange.opacity(0.06))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.2), lineWidth: 1))
+                .fill(Color.acidGreen.opacity(0.05))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.acidGreen.opacity(0.15), lineWidth: 1))
         )
         .padding(.vertical, 4)
     }
@@ -316,8 +310,6 @@ struct AddExerciseSheet: View {
         }
     }
 
-    // MARK: Sections
-
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             label("NOME ESERCIZIO")
@@ -352,9 +344,7 @@ struct AddExerciseSheet: View {
                 stepButton(systemName: "minus") {
                     if sets > 1 {
                         sets -= 1
-                        if variableReps && repsPerSet.count > 1 {
-                            repsPerSet.removeLast()
-                        }
+                        if variableReps && repsPerSet.count > 1 { repsPerSet.removeLast() }
                     }
                 }
                 Text("\(sets)")
@@ -362,9 +352,7 @@ struct AddExerciseSheet: View {
                 stepButton(systemName: "plus") {
                     if sets < 10 {
                         sets += 1
-                        if variableReps {
-                            repsPerSet.append(repsPerSet.last ?? 8)
-                        }
+                        if variableReps { repsPerSet.append(repsPerSet.last ?? 8) }
                     }
                 }
                 Spacer()
@@ -379,11 +367,8 @@ struct AddExerciseSheet: View {
             HStack {
                 label("RIPETIZIONI")
                 Spacer()
-                Toggle("", isOn: $variableReps)
-                    .labelsHidden()
-                    .tint(.acidGreen)
-                Text("Diverse per serie")
-                    .font(.caption).foregroundColor(.gray)
+                Toggle("", isOn: $variableReps).labelsHidden().tint(.acidGreen)
+                Text("Diverse per serie").font(.caption).foregroundColor(.gray)
             }
 
             if variableReps {
@@ -458,8 +443,6 @@ struct AddExerciseSheet: View {
         }
     }
 
-    // MARK: Helpers
-
     private func label(_ text: String) -> some View {
         Text(text).font(.caption).fontWeight(.bold).foregroundColor(.acidGreen).tracking(1)
     }
@@ -486,11 +469,7 @@ struct AddExerciseSheet: View {
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-
-        let finalReps: [Int] = variableReps
-            ? Array(repsPerSet.prefix(sets))
-            : [uniformReps]
-
+        let finalReps: [Int] = variableReps ? Array(repsPerSet.prefix(sets)) : [uniformReps]
         let ex = WorkoutPlanExercise(
             name: viewModel.normalizeName(trimmed),
             sets: sets,
@@ -498,10 +477,8 @@ struct AddExerciseSheet: View {
             isBodyweight: isBodyweight,
             notes: notes
         )
-        let item = WorkoutPlanItem(kind: .exercise, exercise: ex)
-
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            day.items.append(item)
+            day.items.append(WorkoutPlanItem(kind: .exercise, exercise: ex))
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
@@ -529,7 +506,6 @@ struct AddSupersetSheet: View {
                 Color.black.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        // Nome superset
                         VStack(alignment: .leading, spacing: 8) {
                             label("NOME SUPERSET")
                             TextField("Es. A1/A2", text: $supersetName)
@@ -539,7 +515,6 @@ struct AddSupersetSheet: View {
                                 .accentColor(.acidGreen)
                         }
 
-                        // Recupero
                         VStack(alignment: .leading, spacing: 8) {
                             label("RECUPERO DOPO BLOCCO (secondi)")
                             HStack(spacing: 16) {
@@ -553,23 +528,21 @@ struct AddSupersetSheet: View {
                             .background(fieldBg)
                         }
 
-                        // Esercizi superset
                         VStack(alignment: .leading, spacing: 12) {
                             label("ESERCIZI NEL SUPERSET")
                             ForEach(exercises.indices, id: \.self) { i in
                                 supersetExRow(index: i)
                             }
-
                             Button {
                                 exercises.append(WorkoutPlanExercise(name: "", sets: 3, repsBySet: [10], isBodyweight: false))
                             } label: {
                                 Label("Aggiungi esercizio", systemImage: "plus")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(.acidGreen)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
                                     .background(RoundedRectangle(cornerRadius: corner)
-                                        .strokeBorder(Color.orange.opacity(0.5), lineWidth: 1))
+                                        .strokeBorder(Color.acidGreen.opacity(0.5), lineWidth: 1))
                             }
                         }
                     }
@@ -603,14 +576,12 @@ struct AddSupersetSheet: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("\(i + 1).")
-                    .font(.system(size: 13, weight: .bold)).foregroundColor(.orange)
+                    .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
                 TextField("Nome esercizio", text: $exercises[i].name)
                     .foregroundColor(.white)
                     .accentColor(.acidGreen)
                 if exercises.count > 2 {
-                    Button(role: .destructive) {
-                        removeExercise(at: i)
-                    } label: {
+                    Button(role: .destructive) { removeExercise(at: i) } label: {
                         Image(systemName: "trash").foregroundColor(.red.opacity(0.7))
                     }
                 }
@@ -619,7 +590,6 @@ struct AddSupersetSheet: View {
             .background(fieldBg)
 
             HStack(spacing: 12) {
-                // Serie
                 VStack(alignment: .leading, spacing: 4) {
                     Text("SERIE").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     HStack {
@@ -633,11 +603,8 @@ struct AddSupersetSheet: View {
                         }
                     }
                 }
-                .padding(10)
-                .background(fieldBg)
-                .frame(maxWidth: .infinity)
+                .padding(10).background(fieldBg).frame(maxWidth: .infinity)
 
-                // Reps
                 VStack(alignment: .leading, spacing: 4) {
                     Text("REPS").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     HStack {
@@ -652,16 +619,14 @@ struct AddSupersetSheet: View {
                         }
                     }
                 }
-                .padding(10)
-                .background(fieldBg)
-                .frame(maxWidth: .infinity)
+                .padding(10).background(fieldBg).frame(maxWidth: .infinity)
             }
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: corner)
-                .fill(Color.orange.opacity(0.05))
-                .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.orange.opacity(0.15), lineWidth: 1))
+                .fill(Color.acidGreen.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.acidGreen.opacity(0.15), lineWidth: 1))
         )
     }
 
@@ -671,7 +636,7 @@ struct AddSupersetSheet: View {
     }
 
     private func label(_ text: String) -> some View {
-        Text(text).font(.caption).fontWeight(.bold).foregroundColor(.orange).tracking(1)
+        Text(text).font(.caption).fontWeight(.bold).foregroundColor(.acidGreen).tracking(1)
     }
 
     private var fieldBg: some View {
@@ -687,21 +652,16 @@ struct AddSupersetSheet: View {
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.orange)
+                .foregroundColor(.acidGreen)
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(Color.orange.opacity(0.15)))
+                .background(Circle().fill(Color.acidGreen.opacity(0.15)))
         }
     }
 
     private func save() {
-        let ss = WorkoutPlanSuperset(
-            name: supersetName,
-            exercises: exercises,
-            restAfterSeconds: restSeconds
-        )
-        let item = WorkoutPlanItem(kind: .superset, superset: ss)
+        let ss = WorkoutPlanSuperset(name: supersetName, exercises: exercises, restAfterSeconds: restSeconds)
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            day.items.append(item)
+            day.items.append(WorkoutPlanItem(kind: .superset, superset: ss))
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
