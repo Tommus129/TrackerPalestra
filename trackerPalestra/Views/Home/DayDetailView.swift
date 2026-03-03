@@ -75,15 +75,22 @@ struct DayDetailView: View {
         case .exercise:
             if let ex = item.exercise {
                 ExerciseItemRow(exercise: ex) {
-                    withAnimation { day.items.remove(at: idx) }
+                    removeItem(at: idx)
                 }
             }
         case .superset:
             if let ss = item.superset {
                 SupersetItemRow(superset: ss) {
-                    withAnimation { day.items.remove(at: idx) }
+                    removeItem(at: idx)
                 }
             }
+        }
+    }
+
+    private func removeItem(at idx: Int) {
+        guard idx < day.items.count else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            day.items.remove(at: idx)
         }
     }
 
@@ -380,7 +387,6 @@ struct AddExerciseSheet: View {
             }
 
             if variableReps {
-                // Un campo per ogni serie
                 VStack(spacing: 8) {
                     ForEach(0..<sets, id: \.self) { i in
                         HStack {
@@ -403,9 +409,7 @@ struct AddExerciseSheet: View {
                     }
                 }
                 .onChange(of: variableReps) { on in
-                    if on {
-                        repsPerSet = Array(repeating: uniformReps, count: sets)
-                    }
+                    if on { repsPerSet = Array(repeating: uniformReps, count: sets) }
                 }
             } else {
                 HStack(spacing: 16) {
@@ -483,12 +487,9 @@ struct AddExerciseSheet: View {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
-        let finalReps: [Int]
-        if variableReps {
-            finalReps = repsPerSet.prefix(sets).map { $0 }
-        } else {
-            finalReps = [uniformReps]
-        }
+        let finalReps: [Int] = variableReps
+            ? Array(repsPerSet.prefix(sets))
+            : [uniformReps]
 
         let ex = WorkoutPlanExercise(
             name: viewModel.normalizeName(trimmed),
@@ -607,7 +608,9 @@ struct AddSupersetSheet: View {
                     .foregroundColor(.white)
                     .accentColor(.acidGreen)
                 if exercises.count > 2 {
-                    Button(role: .destructive) { exercises.remove(at: i) } label: {
+                    Button(role: .destructive) {
+                        removeExercise(at: i)
+                    } label: {
                         Image(systemName: "trash").foregroundColor(.red.opacity(0.7))
                     }
                 }
@@ -620,10 +623,14 @@ struct AddSupersetSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("SERIE").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     HStack {
-                        stepButton(systemName: "minus") { if exercises[i].sets > 1 { exercises[i].sets -= 1 } }
+                        stepButton(systemName: "minus") {
+                            if exercises[i].sets > 1 { exercises[i].sets -= 1 }
+                        }
                         Text("\(exercises[i].sets)")
                             .font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(minWidth: 30)
-                        stepButton(systemName: "plus") { if exercises[i].sets < 10 { exercises[i].sets += 1 } }
+                        stepButton(systemName: "plus") {
+                            if exercises[i].sets < 10 { exercises[i].sets += 1 }
+                        }
                     }
                 }
                 .padding(10)
@@ -635,7 +642,8 @@ struct AddSupersetSheet: View {
                     Text("REPS").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     HStack {
                         stepButton(systemName: "minus") {
-                            if let r = exercises[i].repsBySet.first, r > 1 { exercises[i].repsBySet[0] = r - 1 }
+                            let current = exercises[i].repsBySet.first ?? 10
+                            if current > 1 { exercises[i].repsBySet[0] = current - 1 }
                         }
                         Text("\(exercises[i].repsBySet.first ?? 10)")
                             .font(.system(size: 16, weight: .bold)).foregroundColor(.acidGreen).frame(minWidth: 30)
@@ -655,6 +663,11 @@ struct AddSupersetSheet: View {
                 .fill(Color.orange.opacity(0.05))
                 .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.orange.opacity(0.15), lineWidth: 1))
         )
+    }
+
+    private func removeExercise(at index: Int) {
+        guard index < exercises.count else { return }
+        exercises.remove(at: index)
     }
 
     private func label(_ text: String) -> some View {
