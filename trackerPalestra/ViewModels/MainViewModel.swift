@@ -2,13 +2,13 @@ import Foundation
 import Combine
 import Firebase
 import FirebaseFirestore
-import SwiftUI // Necessario per .move(fromOffsets:toOffset:) e IndexSet
+import SwiftUI
 
 final class MainViewModel: ObservableObject {
     @Published var plans: [WorkoutPlan] = []
     @Published var workoutHistory: [WorkoutSession] = []
     @Published var userId: String?
-    @Published var exerciseNames: [String] = [] // Libreria globale per suggerimenti esercizi
+    @Published var exerciseNames: [String] = []
     @Published var editingPlan: WorkoutPlan?
 
     init(userId: String) {
@@ -19,8 +19,7 @@ final class MainViewModel: ObservableObject {
     }
 
     // MARK: - Utility
-    
-    /// Normalizza i nomi (es: " panca piana " -> "Panca Piana") per evitare duplicati nel dataset
+
     func normalizeName(_ name: String) -> String {
         return name.trimmingCharacters(in: .whitespacesAndNewlines).capitalized
     }
@@ -31,8 +30,6 @@ final class MainViewModel: ObservableObject {
         guard let userId = userId else { return }
         FirestoreService.shared.fetchPlans(for: userId) { [weak self] plans in
             DispatchQueue.main.async {
-                // Ordiniamo localmente: se l'ordine è nil (scheda vecchia), usiamo 0
-                // Questo garantisce che le schede appaiano sempre nell'ordine scelto dall'utente
                 self?.plans = plans.sorted(by: { ($0.order ?? 0) < ($1.order ?? 0) })
             }
         }
@@ -51,7 +48,7 @@ final class MainViewModel: ObservableObject {
             .whereField("userId", isEqualTo: userId)
             .order(by: "date", descending: true)
             .getDocuments { [weak self] snapshot, _ in
-                Task { @MainActor in  // ← AGGIUNGI QUESTO
+                Task { @MainActor in
                     let sessions = snapshot?.documents.compactMap { doc -> WorkoutSession? in
                         try? doc.data(as: WorkoutSession.self)
                     } ?? []
@@ -61,12 +58,9 @@ final class MainViewModel: ObservableObject {
     }
 
     // MARK: - Ordinamento (Drag & Drop)
-    
-    /// Gestisce lo spostamento delle schede nella Home e salva l'ordine su Firestore
+
     func movePlan(from source: IndexSet, to destination: Int) {
         plans.move(fromOffsets: source, toOffset: destination)
-        
-        // Aggiorna l'indice 'order' per ogni piano e sincronizza con il database
         for index in plans.indices {
             plans[index].order = index
             if let planId = plans[index].id {
@@ -100,9 +94,7 @@ final class MainViewModel: ObservableObject {
 
     func deleteExerciseName(name: String) {
         FirestoreService.shared.deleteExerciseName(name: name) { [weak self] success in
-            if success {
-                self?.loadExerciseNames()
-            }
+            if success { self?.loadExerciseNames() }
         }
     }
 
@@ -113,38 +105,56 @@ final class MainViewModel: ObservableObject {
             print("❌ Errore: userId non disponibile")
             return
         }
-        
         editingPlan = WorkoutPlan(
             id: nil,
             userId: userId,
             name: "Nuova scheda",
-            days: [WorkoutPlanDay(id: UUID().uuidString, label: "Giorno A", exercises: [])],
+            days: [WorkoutPlanDay(id: UUID().uuidString, label: "Giorno A", items: [])],
             createdAt: Date(),
             order: plans.count
         )
-        
         print("✅ Nuova scheda preparata per userId: \(userId)")
     }
 
-
     func saveEditingPlan(completion: @escaping (Bool) -> Void) {
         guard var plan = editingPlan else { return }
-        
-        // 1. Normalizza i nomi di tutti gli esercizi della scheda prima di salvare
+
+        // Normalizza i nomi di tutti gli esercizi (sia singoli che in superset)
         for i in plan.days.indices {
-            for j in plan.days[i].exercises.indices {
-                plan.days[i].exercises[j].name = normalizeName(plan.days[i].exercises[j].name)
+            for j in plan.days[i].items.indices {
+                switch plan.days[i].items[j].kind {
+                case .exercise:
+                    if var ex = plan.days[i].items[j].exercise {
+                        ex.name = normalizeName(ex.name)
+                        plan.days[i].items[j].exercise = ex
+                    }
+                case .superset:
+                    if var ss = plan.days[i].items[j].superset {
+                        for k in ss.exercises.indices {
+                            ss.exercises[k].name = normalizeName(ss.exercises[k].name)
+                        }
+                        plan.days[i].items[j].superset = ss
+                    }
+                }
             }
         }
-        
+
         FirestoreService.shared.savePlan(plan) { [weak self] success in
             if success {
                 self?.loadPlans()
-                
-                // 2. AGGIORNAMENTO DATASET: Salva i nomi nella libreria globale per i suggerimenti futuri
-                let names = Set(plan.days.flatMap { $0.exercises.map { $0.name } })
+
+                // Aggiorna dataset nomi dalla libreria globale
+                let names = Set(plan.days.flatMap { day -> [String] in
+                    day.items.flatMap { item -> [String] in
+                        switch item.kind {
+                        case .exercise:
+                            return [item.exercise?.name].compactMap { $0 }
+                        case .superset:
+                            return item.superset?.exercises.map { $0.name } ?? []
+                        }
+                    }
+                })
                 names.forEach { FirestoreService.shared.saveExerciseName($0) }
-                
                 self?.loadExerciseNames()
             }
             DispatchQueue.main.async { completion(success) }
@@ -154,16 +164,26 @@ final class MainViewModel: ObservableObject {
     // MARK: - Gestione Sessioni (Allenamenti)
 
     func makeSession(plan: WorkoutPlan, day: WorkoutPlanDay) -> WorkoutSession {
-        let exercises = day.exercises.map { ex in
+        // Estrae tutti gli esercizi dal giorno (singoli + quelli dentro superset)
+        let allExercises: [WorkoutPlanExercise] = day.resolvedItems.flatMap { item -> [WorkoutPlanExercise] in
+            switch item.kind {
+            case .exercise:
+                return [item.exercise].compactMap { $0 }
+            case .superset:
+                return item.superset?.exercises ?? []
+            }
+        }
+
+        let exercises = allExercises.map { ex in
             WorkoutExerciseSession(
                 exerciseId: ex.id,
                 name: ex.name,
                 isBodyweight: ex.isBodyweight,
-                sets: (0..<ex.defaultSets).map { idx in
+                sets: (0..<ex.sets).map { idx in
                     WorkoutSet(
                         id: UUID().uuidString,
                         setIndex: idx,
-                        reps: ex.defaultReps,
+                        reps: ex.reps(forSet: idx),
                         weight: 0,
                         isPR: false
                     )
@@ -172,7 +192,7 @@ final class MainViewModel: ObservableObject {
                 exerciseNotes: ex.notes
             )
         }
-        
+
         return WorkoutSession(
             id: UUID().uuidString,
             userId: userId ?? "",
@@ -186,43 +206,34 @@ final class MainViewModel: ObservableObject {
 
     func saveSession(_ session: WorkoutSession, completion: @escaping (Bool) -> Void) {
         var normalizedSession = session
-        
-        // Normalizza i nomi prima del salvataggio
         for i in normalizedSession.exercises.indices {
             normalizedSession.exercises[i].name = normalizeName(normalizedSession.exercises[i].name)
         }
-
         FirestoreService.shared.saveSession(normalizedSession) { [weak self] success in
             if success {
                 self?.fetchWorkoutHistory()
-                // Aggiorna libreria nomi con eventuali nuovi esercizi extra aggiunti durante la sessione
                 normalizedSession.exercises.forEach { FirestoreService.shared.saveExerciseName($0.name) }
                 self?.loadExerciseNames()
             }
             DispatchQueue.main.async { completion(success) }
         }
     }
-    
+
     // MARK: - Analisi e Ghost Sets
-    
-    /// Recupera il peso massimo mai sollevato per un esercizio specifico
+
     func getLastMaxWeight(for exerciseName: String) -> Double? {
         let targetName = normalizeName(exerciseName)
         for session in workoutHistory {
             if let exercise = session.exercises.first(where: { normalizeName($0.name) == targetName }) {
                 let maxWeight = exercise.sets.map { $0.weight }.max()
-                if let max = maxWeight, max > 0 {
-                    return max
-                }
+                if let max = maxWeight, max > 0 { return max }
             }
         }
         return nil
     }
-    
-    /// Recupera l'ultima esecuzione completa di un esercizio per mostrare i Ghost Sets (serie per serie)
+
     func getLastExerciseSession(for name: String) -> WorkoutExerciseSession? {
         let targetName = normalizeName(name)
-        // workoutHistory è già ordinato per data decrescente, quindi il primo match è il più recente
         for session in workoutHistory {
             if let exercise = session.exercises.first(where: { normalizeName($0.name) == targetName }) {
                 return exercise
@@ -230,13 +241,11 @@ final class MainViewModel: ObservableObject {
         }
         return nil
     }
-    
 }
 
 // MARK: - Computed Properties
 
 extension MainViewModel {
-    /// Raggruppa le sessioni di allenamento per giorno per la visualizzazione nel Calendario
     var sessionsByDay: [Date: [WorkoutSession]] {
         let cal = Calendar.current
         var dict: [Date: [WorkoutSession]] = [:]
