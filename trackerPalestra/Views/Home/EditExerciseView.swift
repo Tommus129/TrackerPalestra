@@ -1,13 +1,11 @@
 import SwiftUI
 
 /// Modifica un esercizio già esistente in un giorno.
-/// Riceve un Binding a WorkoutPlanItem e aggiorna exercise in-place.
 struct EditExerciseView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
     @Binding var item: WorkoutPlanItem
 
-    // Stato locale inizializzato dai valori dell'esercizio
     @State private var name: String
     @State private var notes: String
     @State private var sets: Int
@@ -31,7 +29,7 @@ struct EditExerciseView: View {
         _restSeconds  = State(initialValue: ex.restAfterSeconds)
         let isVariable = ex.repsBySet.count > 1
         _variableReps = State(initialValue: isVariable)
-        _uniformReps  = State(initialValue: isVariable ? (ex.repsBySet.first ?? 8) : (ex.repsBySet.first ?? 8))
+        _uniformReps  = State(initialValue: ex.repsBySet.first ?? 8)
         _repsPerSet   = State(initialValue: isVariable ? ex.repsBySet : Array(repeating: ex.repsBySet.first ?? 8, count: ex.sets))
     }
 
@@ -70,7 +68,7 @@ struct EditExerciseView: View {
         }
     }
 
-    // MARK: - Sections (identiche ad AddExerciseView)
+    // MARK: - Sections
 
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -99,11 +97,17 @@ struct EditExerciseView: View {
             label("SERIE")
             HStack(spacing: 16) {
                 stepButton(icon: "minus") {
-                    if sets > 1 { sets -= 1; if variableReps && repsPerSet.count > 1 { repsPerSet.removeLast() } }
+                    if sets > 1 {
+                        sets -= 1
+                        if variableReps && repsPerSet.count > sets { repsPerSet.removeLast() }
+                    }
                 }
                 Text("\(sets)").font(.title2).fontWeight(.bold).foregroundColor(.white).frame(minWidth: 40)
                 stepButton(icon: "plus") {
-                    if sets < 10 { sets += 1; if variableReps { repsPerSet.append(repsPerSet.last ?? 8) } }
+                    if sets < 10 {
+                        sets += 1
+                        if variableReps { repsPerSet.append(repsPerSet.last ?? 8) }
+                    }
                 }
                 Spacer()
             }.padding(14).background(fieldBg)
@@ -120,13 +124,23 @@ struct EditExerciseView: View {
             }
             if variableReps {
                 VStack(spacing: 8) {
-                    ForEach(0..<sets, id: \.self) { i in
+                    // FIX: usa repsPerSet.indices invece di 0..<sets
+                    // SwiftUI traccia le righe sull'array reale, non sul range
+                    // derivato da sets, eliminando il blocco dell'ultima serie.
+                    ForEach(repsPerSet.indices, id: \.self) { i in
                         HStack {
-                            Text("Serie \(i + 1)").font(.system(size: 13)).foregroundColor(.gray).frame(width: 60, alignment: .leading)
+                            Text("Serie \(i + 1)")
+                                .font(.system(size: 13)).foregroundColor(.gray)
+                                .frame(width: 60, alignment: .leading)
                             Spacer()
-                            stepButton(icon: "minus") { if i < repsPerSet.count, repsPerSet[i] > 1 { repsPerSet[i] -= 1 } }
-                            Text("\(i < repsPerSet.count ? repsPerSet[i] : 8)").font(.system(size: 17, weight: .bold)).foregroundColor(.acidGreen).frame(minWidth: 34)
-                            stepButton(icon: "plus") { if i < repsPerSet.count { repsPerSet[i] += 1 } }
+                            stepButton(icon: "minus") {
+                                if repsPerSet[i] > 1 { repsPerSet[i] -= 1 }
+                            }
+                            Text("\(repsPerSet[i])")
+                                .font(.system(size: 17, weight: .bold)).foregroundColor(.acidGreen).frame(minWidth: 34)
+                            stepButton(icon: "plus") {
+                                repsPerSet[i] += 1
+                            }
                         }.padding(.horizontal, 14).padding(.vertical, 10).background(fieldBg)
                     }
                 }
@@ -154,7 +168,8 @@ struct EditExerciseView: View {
             .background(
                 RoundedRectangle(cornerRadius: corner)
                     .fill(isBodyweight ? Color.acidGreen.opacity(0.1) : Color.white.opacity(0.05))
-                    .overlay(RoundedRectangle(cornerRadius: corner).stroke(isBodyweight ? Color.acidGreen.opacity(0.3) : Color.clear, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: corner)
+                        .stroke(isBodyweight ? Color.acidGreen.opacity(0.3) : Color.clear, lineWidth: 1))
             )
         }
     }

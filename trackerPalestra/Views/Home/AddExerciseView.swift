@@ -84,7 +84,7 @@ struct AddExerciseView: View {
                 stepButton(icon: "minus") {
                     if sets > 1 {
                         sets -= 1
-                        if variableReps && repsPerSet.count > 1 { repsPerSet.removeLast() }
+                        if variableReps && repsPerSet.count > sets { repsPerSet.removeLast() }
                     }
                 }
                 Text("\(sets)").font(.title2).fontWeight(.bold).foregroundColor(.white).frame(minWidth: 40)
@@ -110,19 +110,22 @@ struct AddExerciseView: View {
             }
             if variableReps {
                 VStack(spacing: 8) {
-                    ForEach(0..<sets, id: \.self) { i in
+                    // FIX: usa repsPerSet.indices invece di 0..<sets
+                    // così SwiftUI ricrea correttamente le righe quando
+                    // l'array cresce/diminuisce, evitando l'ultima serie bloccata.
+                    ForEach(repsPerSet.indices, id: \.self) { i in
                         HStack {
                             Text("Serie \(i + 1)")
                                 .font(.system(size: 13)).foregroundColor(.gray)
                                 .frame(width: 60, alignment: .leading)
                             Spacer()
                             stepButton(icon: "minus") {
-                                if i < repsPerSet.count, repsPerSet[i] > 1 { repsPerSet[i] -= 1 }
+                                if repsPerSet[i] > 1 { repsPerSet[i] -= 1 }
                             }
-                            Text("\(i < repsPerSet.count ? repsPerSet[i] : 8)")
+                            Text("\(repsPerSet[i])")
                                 .font(.system(size: 17, weight: .bold)).foregroundColor(.acidGreen).frame(minWidth: 34)
                             stepButton(icon: "plus") {
-                                if i < repsPerSet.count { repsPerSet[i] += 1 }
+                                repsPerSet[i] += 1
                             }
                         }
                         .padding(.horizontal, 14).padding(.vertical, 10).background(fieldBg)
@@ -179,7 +182,6 @@ struct AddExerciseView: View {
                 Spacer()
             }
             .padding(14).background(fieldBg)
-            // Preset rapidi
             HStack(spacing: 8) {
                 ForEach([30, 60, 90, 120, 180], id: \.self) { sec in
                     Button { restSeconds = sec } label: {
