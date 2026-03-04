@@ -1,13 +1,20 @@
 import SwiftUI
 
+// MARK: - Sheet type
+
+private enum AddSheetType: String, Identifiable {
+    case exercise = "exercise"
+    case superset = "superset"
+    var id: String { rawValue }
+}
+
 // MARK: - DayDetailView
 
 struct DayDetailView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Binding var day: WorkoutPlanDay
 
-    @State private var showExerciseSheet = false
-    @State private var showSupersetSheet = false
+    @State private var activeSheet: AddSheetType?
 
     private let corner: CGFloat = 12
 
@@ -53,11 +60,15 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .sheet(isPresented: $showExerciseSheet) {
-            AddExerciseSheet(day: $day, viewModel: viewModel)
-        }
-        .sheet(isPresented: $showSupersetSheet) {
-            AddSupersetSheet(day: $day)
+        .sheet(item: $activeSheet) { type in
+            switch type {
+            case .exercise:
+                AddExerciseSheet(day: $day, viewModel: viewModel)
+                    .onDisappear { activeSheet = nil }
+            case .superset:
+                AddSupersetSheet(day: $day)
+                    .onDisappear { activeSheet = nil }
+            }
         }
         .onAppear { migrateLegacyIfNeeded() }
     }
@@ -91,7 +102,7 @@ struct DayDetailView: View {
     private var addButtons: some View {
         VStack(spacing: 10) {
             Button {
-                showExerciseSheet = true
+                activeSheet = .exercise
             } label: {
                 Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
                     .font(.system(size: 15, weight: .bold))
@@ -103,7 +114,7 @@ struct DayDetailView: View {
             }
 
             Button {
-                showSupersetSheet = true
+                activeSheet = .superset
             } label: {
                 Label("AGGIUNGI SUPERSET", systemImage: "link")
                     .font(.system(size: 15, weight: .bold))
