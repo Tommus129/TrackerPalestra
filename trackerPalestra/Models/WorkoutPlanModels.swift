@@ -17,25 +17,16 @@ struct WorkoutPlan: Identifiable, Codable, Hashable {
 struct WorkoutPlanDay: Identifiable, Codable, Hashable {
     var id: String = UUID().uuidString
     var label: String
-
-    // Nuova struttura (source of truth)
     var items: [WorkoutPlanItem] = []
-
-    // Legacy – usato solo per migrazione da vecchi documenti Firestore
     var exercises: [WorkoutPlanExercise]?
 
-    /// Restituisce sempre la lista di items, convertendo legacy se necessario.
     var resolvedItems: [WorkoutPlanItem] {
         if !items.isEmpty { return items }
         return (exercises ?? []).map { WorkoutPlanItem(kind: .exercise, exercise: $0) }
     }
 
-    // MARK: - CodingKeys
-    enum CodingKeys: String, CodingKey {
-        case id, label, items, exercises
-    }
+    enum CodingKeys: String, CodingKey { case id, label, items, exercises }
 
-    // Decodifica robusta: tolera documenti vecchi senza il campo "items"
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id        = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
@@ -46,21 +37,15 @@ struct WorkoutPlanDay: Identifiable, Codable, Hashable {
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id,        forKey: .id)
-        try c.encode(label,     forKey: .label)
-        try c.encode(items,     forKey: .items)
+        try c.encode(id,    forKey: .id)
+        try c.encode(label, forKey: .label)
+        try c.encode(items, forKey: .items)
         try c.encodeIfPresent(exercises, forKey: .exercises)
     }
 
-    // Memberwise init per uso in-app
-    init(id: String = UUID().uuidString,
-         label: String,
-         items: [WorkoutPlanItem] = [],
-         exercises: [WorkoutPlanExercise]? = nil) {
-        self.id = id
-        self.label = label
-        self.items = items
-        self.exercises = exercises
+    init(id: String = UUID().uuidString, label: String,
+         items: [WorkoutPlanItem] = [], exercises: [WorkoutPlanExercise]? = nil) {
+        self.id = id; self.label = label; self.items = items; self.exercises = exercises
     }
 }
 
@@ -72,10 +57,7 @@ struct WorkoutPlanItem: Identifiable, Codable, Hashable {
     var exercise: WorkoutPlanExercise?
     var superset: WorkoutPlanSuperset?
 
-    enum Kind: String, Codable {
-        case exercise
-        case superset
-    }
+    enum Kind: String, Codable { case exercise, superset }
 }
 
 // MARK: - WorkoutPlanSuperset
@@ -93,85 +75,61 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
     var id: String = UUID().uuidString
     var name: String
     var sets: Int
-
-    /// Se count == 1 → reps uniformi per tutte le serie.
-    /// Se count == sets → reps diverse per ogni serie (es. [10,9,9,8]).
     var repsBySet: [Int]
-
     var isBodyweight: Bool
     var notes: String = ""
+    /// Recupero in secondi dopo ogni serie (default 60)
+    var restAfterSeconds: Int = 60
 
-    // MARK: Helpers
-
-    var repsDisplay: String {
-        repsBySet.map { String($0) }.joined(separator: " ")
-    }
+    var repsDisplay: String { repsBySet.map { String($0) }.joined(separator: " ") }
 
     func reps(forSet index: Int) -> Int {
         if repsBySet.count == 1 { return repsBySet[0] }
         return repsBySet[min(index, repsBySet.count - 1)]
     }
 
-    // MARK: Inits
-
-    init(id: String = UUID().uuidString,
-         name: String,
-         sets: Int,
-         repsBySet: [Int],
-         isBodyweight: Bool,
-         notes: String = "") {
-        self.id = id
-        self.name = name
-        self.sets = sets
-        self.repsBySet = repsBySet
-        self.isBodyweight = isBodyweight
-        self.notes = notes
+    init(id: String = UUID().uuidString, name: String, sets: Int, repsBySet: [Int],
+         isBodyweight: Bool, notes: String = "", restAfterSeconds: Int = 60) {
+        self.id = id; self.name = name; self.sets = sets; self.repsBySet = repsBySet
+        self.isBodyweight = isBodyweight; self.notes = notes; self.restAfterSeconds = restAfterSeconds
     }
 
-    init(id: String = UUID().uuidString,
-         name: String,
-         defaultSets: Int,
-         defaultReps: Int,
-         isBodyweight: Bool,
-         notes: String = "") {
-        self.id = id
-        self.name = name
-        self.sets = defaultSets
-        self.repsBySet = [defaultReps]
-        self.isBodyweight = isBodyweight
-        self.notes = notes
+    init(id: String = UUID().uuidString, name: String, defaultSets: Int, defaultReps: Int,
+         isBodyweight: Bool, notes: String = "") {
+        self.id = id; self.name = name; self.sets = defaultSets; self.repsBySet = [defaultReps]
+        self.isBodyweight = isBodyweight; self.notes = notes; self.restAfterSeconds = 60
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, sets, repsBySet, isBodyweight, notes
+        case id, name, sets, repsBySet, isBodyweight, notes, restAfterSeconds
         case defaultSets, defaultReps
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
-        name = try c.decode(String.self, forKey: .name)
+        id           = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        name         = try c.decode(String.self, forKey: .name)
         isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
-        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
-
+        notes        = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        restAfterSeconds = try c.decodeIfPresent(Int.self, forKey: .restAfterSeconds) ?? 60
         if let rbs = try c.decodeIfPresent([Int].self, forKey: .repsBySet), !rbs.isEmpty {
             repsBySet = rbs
             sets = try c.decodeIfPresent(Int.self, forKey: .sets) ?? rbs.count
         } else {
             let s = try c.decodeIfPresent(Int.self, forKey: .defaultSets) ?? (try c.decodeIfPresent(Int.self, forKey: .sets) ?? 3)
             let r = try c.decodeIfPresent(Int.self, forKey: .defaultReps) ?? 8
-            sets = s
-            repsBySet = [r]
+            sets = s; repsBySet = [r]
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id,          forKey: .id)
-        try c.encode(name,        forKey: .name)
-        try c.encode(sets,        forKey: .sets)
-        try c.encode(repsBySet,   forKey: .repsBySet)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(sets, forKey: .sets)
+        try c.encode(repsBySet, forKey: .repsBySet)
         try c.encode(isBodyweight, forKey: .isBodyweight)
-        try c.encode(notes,       forKey: .notes)
+        try c.encode(notes, forKey: .notes)
+        try c.encode(restAfterSeconds, forKey: .restAfterSeconds)
     }
 }

@@ -4,8 +4,12 @@ struct ExerciseCardView: View {
     @Binding var exercise: WorkoutExerciseSession
     @EnvironmentObject var viewModel: MainViewModel
     var onDelete: () -> Void
+    /// Recupero in secondi da avviare automaticamente al check dell'ultimo set.
+    /// Passato da WorkoutSessionView in base alla scheda.
+    var restSeconds: Int = 60
+    /// Callback per avviare il timer nella parent view
+    var onStartRest: ((Int) -> Void)? = nil
 
-    // Recupera l'ultimo massimale storico escludendo la sessione corrente
     private var lastMaxWeight: Double {
         viewModel.workoutHistory
             .filter { $0.id != exercise.id }
@@ -16,27 +20,22 @@ struct ExerciseCardView: View {
             .max() ?? 0
     }
 
-    // Dati dell'ultima volta per i Ghost Sets
     private var lastSessionData: WorkoutExerciseSession? {
         viewModel.workoutHistory
             .flatMap { $0.exercises }
             .first { viewModel.normalizeName($0.name) == viewModel.normalizeName(exercise.name) }
     }
-    
-    // ✅ NUOVO: Note dell'ultimo allenamento
-    private var lastSessionNotes: String? {
-        lastSessionData?.exerciseNotes
-    }
+
+    private var lastSessionNotes: String? { lastSessionData?.exerciseNotes }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Header: Titolo e Record
+            // Header
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exercise.name.uppercased())
                         .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundColor(.acidGreen)
-                    
                     HStack(spacing: 8) {
                         if lastMaxWeight > 0 {
                             Text("BEST: \(lastMaxWeight, specifier: "%.1f") KG")
@@ -45,14 +44,14 @@ struct ExerciseCardView: View {
                                 .padding(.horizontal, 8).padding(.vertical, 4)
                                 .background(Color.white.opacity(0.1)).cornerRadius(5)
                         }
-                        
                         if exercise.isPR {
                             Label("NEW RECORD", systemImage: "trophy.fill")
-                                .font(.system(size: 9, weight: .black))
-                                .foregroundColor(.black)
+                                .font(.system(size: 9, weight: .black)).foregroundColor(.black)
                                 .padding(.horizontal, 8).padding(.vertical, 4)
                                 .background(Color.acidGreen).cornerRadius(5)
                         }
+                        // Badge recupero
+                        restBadge
                     }
                 }
                 Spacer()
@@ -61,51 +60,39 @@ struct ExerciseCardView: View {
                 }
             }
 
-            // ✅ NUOVO: Note dell'ultimo allenamento (se esistono)
+            // Note precedenti
             if let previousNotes = lastSessionNotes, !previousNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("NOTE PRECEDENTI")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundColor(.white.opacity(0.5))
-                    
+                        .font(.system(size: 8, weight: .black)).foregroundColor(.white.opacity(0.5))
                     Text(previousNotes)
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.6))
-                        .italic()
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 11)).foregroundColor(.white.opacity(0.6)).italic()
+                        .padding(8).frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 10).fill(Color.deepPurple.opacity(0.1)))
                 }
             }
 
-            // Note Esercizio Corrente
+            // Note correnti
             VStack(alignment: .leading, spacing: 5) {
                 Text("NOTE ESERCIZIO / CIRCUITO")
-                    .font(.system(size: 8, weight: .black))
-                    .foregroundColor(.deepPurple)
-                
+                    .font(.system(size: 8, weight: .black)).foregroundColor(.deepPurple)
                 TextEditor(text: $exercise.exerciseNotes)
-                    .frame(minHeight: 50)
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.9))
+                    .frame(minHeight: 50).font(.system(size: 12)).foregroundColor(.white.opacity(0.9))
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.03)))
                     .scrollContentBackground(.hidden)
             }
 
-            // LISTA DEI SET CON CHECK A DESTRA
+            // Sets
             VStack(spacing: 12) {
                 ForEach(exercise.sets.indices, id: \.self) { index in
                     let ghostSet = (lastSessionData?.sets.indices.contains(index) ?? false) ? lastSessionData?.sets[index] : nil
-                    
                     HStack(spacing: 15) {
-                        // Indice del Set
                         Text("\(index + 1)")
                             .font(.system(size: 16, weight: .black, design: .monospaced))
                             .foregroundColor(exercise.sets[index].isCompleted ? .acidGreen.opacity(0.3) : .acidGreen)
                             .frame(width: 25)
 
-                        // Input REPS
                         VStack(alignment: .center, spacing: 2) {
                             Text("REPS").font(.system(size: 8, weight: .black)).foregroundColor(.deepPurple)
                             TextField(ghostSet != nil ? "\(ghostSet!.reps)" : "0",
@@ -119,7 +106,6 @@ struct ExerciseCardView: View {
                                 .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.05)))
                         }
 
-                        // Input KG
                         if !exercise.isBodyweight {
                             VStack(alignment: .center, spacing: 2) {
                                 Text("KG").font(.system(size: 8, weight: .black)).foregroundColor(.deepPurple)
@@ -134,39 +120,37 @@ struct ExerciseCardView: View {
                                     .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.05)))
                             }
                         }
-                        
+
                         Spacer()
 
-                        // ✅ MODIFICATO: Tasto CHECK con toggle abilitato sempre
+                        // Check — avvia timer al completamento
                         Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                                 exercise.sets[index].isCompleted.toggle()
                             }
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            // Avvia recupero automaticamente quando si spunta un set
+                            if exercise.sets[index].isCompleted {
+                                onStartRest?(restSeconds)
+                            }
                         }) {
                             ZStack {
                                 Circle()
                                     .stroke(exercise.sets[index].isCompleted ? Color.acidGreen : Color.white.opacity(0.2), lineWidth: 2)
                                     .frame(width: 32, height: 32)
-                                
                                 if exercise.sets[index].isCompleted {
-                                    Circle()
-                                        .fill(Color.acidGreen)
-                                        .frame(width: 32, height: 32)
-                                    
+                                    Circle().fill(Color.acidGreen).frame(width: 32, height: 32)
                                     Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.black)
+                                        .font(.system(size: 14, weight: .bold)).foregroundColor(.black)
                                 }
                             }
                         }
                     }
                     .opacity(exercise.sets[index].isCompleted ? 0.5 : 1.0)
-                    // ✅ RIMOSSO: .disabled(exercise.sets[index].isCompleted)
                 }
             }
 
-            // Pulsante Aggiungi Set
+            // Aggiungi / Rimuovi set
             HStack {
                 Button(action: addSet) {
                     HStack {
@@ -198,35 +182,44 @@ struct ExerciseCardView: View {
             let currentMax = exercise.sets.map { $0.weight }.max() ?? 0
             exercise.isPR = currentMax > lastMaxWeight && currentMax > 0
         }
-        // ✅ NUOVO: Pre-compila i valori ghost quando la view appare
-        .onAppear {
-            prefillGhostWeights()
+        .onAppear { prefillGhostWeights() }
+    }
+
+    // Badge recupero sotto il nome
+    @ViewBuilder
+    private var restBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "timer")
+                .font(.system(size: 8, weight: .bold))
+            Text(formatRest(restSeconds))
+                .font(.system(size: 9, weight: .bold))
         }
+        .foregroundColor(.white.opacity(0.7))
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(Color.deepPurple.opacity(0.4)).cornerRadius(5)
+    }
+
+    private func formatRest(_ s: Int) -> String {
+        if s < 60 { return "\(s)s" }
+        let m = s / 60; let sec = s % 60
+        return sec == 0 ? "\(m)m" : "\(m)m\(sec)s"
     }
 
     private func addSet() {
         let newIndex = exercise.sets.count
         let lastSet = exercise.sets.last
-        exercise.sets.append(WorkoutSet(id: UUID().uuidString, setIndex: newIndex, reps: lastSet?.reps ?? 10, weight: lastSet?.weight ?? 0, isPR: false, isCompleted: false))
+        exercise.sets.append(WorkoutSet(id: UUID().uuidString, setIndex: newIndex,
+            reps: lastSet?.reps ?? 10, weight: lastSet?.weight ?? 0, isPR: false, isCompleted: false))
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
-    
-    // ✅ NUOVA FUNZIONE: Pre-compila i pesi e reps dai dati precedenti
+
     private func prefillGhostWeights() {
         guard let lastData = lastSessionData else { return }
-        
-        // Solo se i set correnti sono vuoti (reps = 0 e weight = 0), pre-compila
         for index in exercise.sets.indices {
             if index < lastData.sets.count {
                 let ghostSet = lastData.sets[index]
-                
-                // Pre-compila solo se i valori sono ancora a 0
-                if exercise.sets[index].reps == 0 {
-                    exercise.sets[index].reps = ghostSet.reps
-                }
-                if exercise.sets[index].weight == 0 && !exercise.isBodyweight {
-                    exercise.sets[index].weight = ghostSet.weight
-                }
+                if exercise.sets[index].reps == 0 { exercise.sets[index].reps = ghostSet.reps }
+                if exercise.sets[index].weight == 0 && !exercise.isBodyweight { exercise.sets[index].weight = ghostSet.weight }
             }
         }
     }

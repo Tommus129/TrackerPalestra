@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// View dedicata alla creazione di un esercizio singolo.
-/// Viene navigata tramite NavigationLink da DayDetailView — nessun modal coinvolto.
 struct AddExerciseView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
@@ -14,6 +12,7 @@ struct AddExerciseView: View {
     @State private var uniformReps = 8
     @State private var repsPerSet: [Int] = Array(repeating: 8, count: 3)
     @State private var isBodyweight = false
+    @State private var restSeconds = 60
 
     private let corner: CGFloat = 12
 
@@ -33,6 +32,7 @@ struct AddExerciseView: View {
                     setsSection
                     repsSection
                     bodyweightToggle
+                    restSection
                     notesSection
                     saveButton
                 }
@@ -46,8 +46,7 @@ struct AddExerciseView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Annulla") { dismiss() }
-                    .foregroundColor(.white.opacity(0.6))
+                Button("Annulla") { dismiss() }.foregroundColor(.white.opacity(0.6))
             }
         }
     }
@@ -164,10 +163,43 @@ struct AddExerciseView: View {
         }
     }
 
+    private var restSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            label("RECUPERO TRA LE SERIE")
+            HStack(spacing: 16) {
+                stepButton(icon: "minus") { if restSeconds >= 15 { restSeconds -= 15 } }
+                HStack(spacing: 4) {
+                    Text(formatRest(restSeconds))
+                        .font(.title2).fontWeight(.bold).foregroundColor(.white)
+                    Text(restSeconds >= 60 ? "min" : "sec")
+                        .font(.caption).foregroundColor(.gray)
+                }
+                .frame(minWidth: 70)
+                stepButton(icon: "plus") { restSeconds += 15 }
+                Spacer()
+            }
+            .padding(14).background(fieldBg)
+            // Preset rapidi
+            HStack(spacing: 8) {
+                ForEach([30, 60, 90, 120, 180], id: \.self) { sec in
+                    Button { restSeconds = sec } label: {
+                        Text(sec < 60 ? "\(sec)s" : "\(sec/60)m\(sec%60 > 0 ? "\(sec%60)s" : "")")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(restSeconds == sec ? .black : .acidGreen)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(
+                                Capsule().fill(restSeconds == sec ? Color.acidGreen : Color.acidGreen.opacity(0.1))
+                            )
+                    }
+                }
+            }
+        }
+    }
+
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             label("NOTE")
-            TextField("Es. recupero 2', cadenza lenta…", text: $notes, axis: .vertical)
+            TextField("Es. recupero lungo, cadenza lenta", text: $notes, axis: .vertical)
                 .foregroundColor(.white).padding(14).background(fieldBg).lineLimit(2...4).accentColor(.acidGreen)
         }
     }
@@ -189,6 +221,12 @@ struct AddExerciseView: View {
     }
 
     // MARK: - Helpers
+
+    private func formatRest(_ s: Int) -> String {
+        if s < 60 { return "\(s)" }
+        let m = s / 60; let sec = s % 60
+        return sec == 0 ? "\(m):00" : "\(m):\(String(format:"%02d",sec))"
+    }
 
     private func label(_ text: String) -> some View {
         Text(text).font(.caption).fontWeight(.bold).foregroundColor(.acidGreen).tracking(1)
@@ -220,7 +258,8 @@ struct AddExerciseView: View {
             sets: sets,
             repsBySet: finalReps,
             isBodyweight: isBodyweight,
-            notes: notes
+            notes: notes,
+            restAfterSeconds: restSeconds
         )
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             day.items.append(WorkoutPlanItem(kind: .exercise, exercise: ex))
