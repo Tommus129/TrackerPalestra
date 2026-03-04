@@ -61,13 +61,12 @@ struct DayDetailView: View {
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .sheet(item: $activeSheet) { type in
-            switch type {
-            case .exercise:
+            // type.id == "exercise" → AddExerciseSheet
+            // type.id == "superset" → AddSupersetSheet
+            if type.id == AddSheetType.exercise.id {
                 AddExerciseSheet(day: $day, viewModel: viewModel)
-                    .onDisappear { activeSheet = nil }
-            case .superset:
+            } else {
                 AddSupersetSheet(day: $day)
-                    .onDisappear { activeSheet = nil }
             }
         }
         .onAppear { migrateLegacyIfNeeded() }
