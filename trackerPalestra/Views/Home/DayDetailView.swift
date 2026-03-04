@@ -1,20 +1,13 @@
 import SwiftUI
 
-// MARK: - Sheet type
-
-private enum AddSheetType: String, Identifiable {
-    case exercise = "exercise"
-    case superset = "superset"
-    var id: String { rawValue }
-}
-
 // MARK: - DayDetailView
 
 struct DayDetailView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Binding var day: WorkoutPlanDay
 
-    @State private var activeSheet: AddSheetType?
+    @State private var showAddExercise = false
+    @State private var showAddSuperset = false
 
     private let corner: CGFloat = 12
 
@@ -60,14 +53,11 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .sheet(item: $activeSheet) { type in
-            // type.id == "exercise" → AddExerciseSheet
-            // type.id == "superset" → AddSupersetSheet
-            if type.id == AddSheetType.exercise.id {
-                AddExerciseSheet(day: $day, viewModel: viewModel)
-            } else {
-                AddSupersetSheet(day: $day)
-            }
+        .fullScreenCover(isPresented: $showAddExercise) {
+            AddExerciseSheet(day: $day, viewModel: viewModel)
+        }
+        .fullScreenCover(isPresented: $showAddSuperset) {
+            AddSupersetSheet(day: $day)
         }
         .onAppear { migrateLegacyIfNeeded() }
     }
@@ -101,7 +91,7 @@ struct DayDetailView: View {
     private var addButtons: some View {
         VStack(spacing: 10) {
             Button {
-                activeSheet = .exercise
+                showAddExercise = true
             } label: {
                 Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
                     .font(.system(size: 15, weight: .bold))
@@ -113,7 +103,7 @@ struct DayDetailView: View {
             }
 
             Button {
-                activeSheet = .superset
+                showAddSuperset = true
             } label: {
                 Label("AGGIUNGI SUPERSET", systemImage: "link")
                     .font(.system(size: 15, weight: .bold))
