@@ -6,6 +6,8 @@ struct DayDetailView: View {
 
     @State private var goToAddExercise = false
     @State private var goToAddSuperset = false
+    @State private var editingExerciseIdx: Int? = nil
+    @State private var editingSupersetIdx: Int? = nil
 
     private let corner: CGFloat = 12
 
@@ -13,15 +15,40 @@ struct DayDetailView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
+            // Link invisibili per ADD
             NavigationLink(
                 destination: AddExerciseView(day: $day).environmentObject(viewModel),
                 isActive: $goToAddExercise
             ) { EmptyView() }.hidden()
 
             NavigationLink(
-                destination: AddSupersetView(day: $day),
+                destination: AddSupersetView(day: $day).environmentObject(viewModel),
                 isActive: $goToAddSuperset
             ) { EmptyView() }.hidden()
+
+            // Link invisibili per EDIT esercizio
+            if let idx = editingExerciseIdx, idx < day.items.count, day.items[idx].exercise != nil {
+                NavigationLink(
+                    destination: EditExerciseView(item: $day.items[idx])
+                        .environmentObject(viewModel),
+                    isActive: Binding(
+                        get: { editingExerciseIdx != nil },
+                        set: { if !$0 { editingExerciseIdx = nil } }
+                    )
+                ) { EmptyView() }.hidden()
+            }
+
+            // Link invisibili per EDIT superset
+            if let idx = editingSupersetIdx, idx < day.items.count, day.items[idx].superset != nil {
+                NavigationLink(
+                    destination: EditSupersetView(item: $day.items[idx])
+                        .environmentObject(viewModel),
+                    isActive: Binding(
+                        get: { editingSupersetIdx != nil },
+                        set: { if !$0 { editingSupersetIdx = nil } }
+                    )
+                ) { EmptyView() }.hidden()
+            }
 
             List {
                 Section {
@@ -49,38 +76,23 @@ struct DayDetailView: View {
                 .listRowSeparator(.hidden)
 
                 Section {
-                    Button {
-                        goToAddExercise = true
-                    } label: {
+                    Button { goToAddExercise = true } label: {
                         Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
-                            .font(.system(size: 15, weight: .bold))
-                            .tracking(0.8)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
+                            .font(.system(size: 15, weight: .bold)).tracking(0.8)
+                            .foregroundColor(.black).frame(maxWidth: .infinity).padding(.vertical, 14)
                             .background(RoundedRectangle(cornerRadius: corner).fill(Color.acidGreen))
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
 
-                    Button {
-                        goToAddSuperset = true
-                    } label: {
+                    Button { goToAddSuperset = true } label: {
                         Label("AGGIUNGI SUPERSET", systemImage: "link")
-                            .font(.system(size: 15, weight: .bold))
-                            .tracking(0.8)
-                            .foregroundColor(.acidGreen)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: corner)
-                                    .strokeBorder(Color.acidGreen, lineWidth: 1.5)
-                            )
+                            .font(.system(size: 15, weight: .bold)).tracking(0.8)
+                            .foregroundColor(.acidGreen).frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(RoundedRectangle(cornerRadius: corner).strokeBorder(Color.acidGreen, lineWidth: 1.5))
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -99,19 +111,18 @@ struct DayDetailView: View {
         switch item.kind {
         case .exercise:
             if let ex = item.exercise {
-                ExerciseItemRow(exercise: ex) { removeItem(at: idx) }
+                ExerciseItemRow(exercise: ex) {
+                    editingExerciseIdx = idx
+                }
+                .contentShape(Rectangle())
             }
         case .superset:
             if let ss = item.superset {
-                SupersetItemRow(superset: ss) { removeItem(at: idx) }
+                SupersetItemRow(superset: ss) {
+                    editingSupersetIdx = idx
+                }
+                .contentShape(Rectangle())
             }
-        }
-    }
-
-    private func removeItem(at idx: Int) {
-        guard idx < day.items.count else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            day.items.remove(at: idx)
         }
     }
 
@@ -136,103 +147,110 @@ struct DayDetailView: View {
 }
 
 // MARK: - ExerciseItemRow
-
+/// onTap = apri modifica (niente tasto trash: si elimina con swipe)
 struct ExerciseItemRow: View {
     let exercise: WorkoutPlanExercise
-    let onDelete: () -> Void
+    let onTap: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(Color.acidGreen.opacity(0.1)).frame(width: 44, height: 44)
-                Image(systemName: exercise.isBodyweight ? "figure.flexibility" : "dumbbell.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.acidGreen)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(exercise.name)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                HStack(spacing: 6) {
-                    Text("\(exercise.sets) ×")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white.opacity(0.6))
-                    Text(exercise.repsDisplay)
-                        .font(.system(size: 15, weight: .bold))
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(Color.acidGreen.opacity(0.1)).frame(width: 44, height: 44)
+                    Image(systemName: exercise.isBodyweight ? "figure.flexibility" : "dumbbell.fill")
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.acidGreen)
-                    if exercise.isBodyweight {
-                        Text("BW")
-                            .font(.caption2).fontWeight(.black)
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 6).padding(.vertical, 3)
-                            .background(Capsule().fill(Color.acidGreen))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exercise.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                    HStack(spacing: 6) {
+                        Text("\(exercise.sets) \u00d7")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white.opacity(0.6))
+                        Text(exercise.repsDisplay)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.acidGreen)
+                        if exercise.isBodyweight {
+                            Text("BW").font(.caption2).fontWeight(.black).foregroundColor(.black)
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(Capsule().fill(Color.acidGreen))
+                        }
+                        // Badge recupero
+                        HStack(spacing: 3) {
+                            Image(systemName: "timer").font(.system(size: 8, weight: .bold))
+                            Text(formatRest(exercise.restAfterSeconds))
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
+                    }
+                    if !exercise.notes.isEmpty {
+                        Text(exercise.notes).font(.caption).foregroundColor(.gray).lineLimit(1)
                     }
                 }
-                if !exercise.notes.isEmpty {
-                    Text(exercise.notes).font(.caption).foregroundColor(.gray).lineLimit(1)
-                }
+                Spacer()
+                // Freccia che indica "modificabile"
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.25))
             }
-            Spacer()
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.red.opacity(0.7))
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(Color.red.opacity(0.1)))
-            }
+            .padding(.vertical, 8)
         }
-        .padding(.vertical, 8)
+        .buttonStyle(.plain)
+    }
+
+    private func formatRest(_ s: Int) -> String {
+        s < 60 ? "\(s)s" : (s % 60 == 0 ? "\(s/60)m" : "\(s/60)m\(s%60)s")
     }
 }
 
 // MARK: - SupersetItemRow
-
+/// onTap = apri modifica (si elimina con swipe)
 struct SupersetItemRow: View {
     let superset: WorkoutPlanSuperset
-    let onDelete: () -> Void
+    let onTap: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(superset.name, systemImage: "link")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.acidGreen)
-                Spacer()
-                Text("Rec. \(superset.restAfterSeconds)\"")
-                    .font(.caption).foregroundColor(.gray)
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(.red.opacity(0.7))
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(Color.red.opacity(0.1)))
-                }
-            }
-            ForEach(superset.exercises.indices, id: \.self) { i in
-                let ex = superset.exercises[i]
-                HStack(spacing: 10) {
-                    Text("\(i + 1).")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.acidGreen.opacity(0.8))
-                        .frame(width: 18)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(ex.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                        Text("\(ex.sets) × \(ex.repsDisplay)")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.acidGreen)
-                    }
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label(superset.name, systemImage: "link")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.acidGreen)
                     Spacer()
+                    Text("Rec. \(superset.restAfterSeconds)\"")
+                        .font(.caption).foregroundColor(.gray)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.25))
+                }
+                ForEach(superset.exercises.indices, id: \.self) { i in
+                    let ex = superset.exercises[i]
+                    HStack(spacing: 10) {
+                        Text("\(i + 1).")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.acidGreen.opacity(0.8)).frame(width: 18)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ex.name)
+                                .font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                            Text("\(ex.sets) \u00d7 \(ex.repsDisplay)")
+                                .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
+                        }
+                        Spacer()
+                    }
                 }
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.acidGreen.opacity(0.05))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.acidGreen.opacity(0.15), lineWidth: 1))
+            )
+            .padding(.vertical, 4)
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.acidGreen.opacity(0.05))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.acidGreen.opacity(0.15), lineWidth: 1))
-        )
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
 }
