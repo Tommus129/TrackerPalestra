@@ -2,9 +2,9 @@ import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 
-// MARK: - SessionItem: unità di rendering (esercizio singolo o gruppo superset)
+// MARK: - SessionItem
 private enum SessionItem: Identifiable {
-    case single(indices: [Int])          // sempre 1 elemento
+    case single(indices: [Int])
     case superset(indices: [Int], groupId: String, name: String)
 
     var id: String {
@@ -29,12 +29,14 @@ struct WorkoutSessionView: View {
     @State private var showFullScreenTimer = false
     @State private var currentRestLabel: String = "RECUPERO"
 
+    // Colore accent superset — usato ovunque nella card
+    private let ssColor = Color.orange
+
     init(session: WorkoutSession, onSave: @escaping (WorkoutSession) -> Void) {
         _localSession = State(initialValue: session)
         self.onSave = onSave
     }
 
-    // Raggruppa gli esercizi mantenendo l'ordine originale
     private var sessionItems: [SessionItem] {
         var result: [SessionItem] = []
         var i = 0
@@ -45,8 +47,7 @@ struct WorkoutSessionView: View {
                 var j = i + 1
                 while j < localSession.exercises.count,
                       localSession.exercises[j].supersetGroupId == gid {
-                    indices.append(j)
-                    j += 1
+                    indices.append(j); j += 1
                 }
                 result.append(.superset(indices: indices, groupId: gid, name: ex.supersetName ?? "Superset"))
                 i = j
@@ -68,7 +69,7 @@ struct WorkoutSessionView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        // Data Picker
+                        // Data
                         HStack {
                             Image(systemName: "calendar")
                             DatePicker("", selection: $localSession.date, displayedComponents: .date)
@@ -78,7 +79,7 @@ struct WorkoutSessionView: View {
                         .background(Capsule().fill(Color.white.opacity(0.05)))
                         .padding(.top, 20)
 
-                        // Rendering items
+                        // Items
                         ForEach(sessionItems) { item in
                             switch item {
                             case .single(let indices):
@@ -94,7 +95,6 @@ struct WorkoutSessionView: View {
                                         startRest(seconds: seconds, label: localSession.exercises[idx].name)
                                     }
                                 )
-
                             case .superset(let indices, _, let ssName):
                                 supersetCard(indices: indices, name: ssName)
                             }
@@ -115,10 +115,7 @@ struct WorkoutSessionView: View {
 
                         // Bottoni
                         VStack(spacing: 15) {
-                            Button {
-                                hideKeyboard()
-                                showingExtraSheet = true
-                            } label: {
+                            Button { hideKeyboard(); showingExtraSheet = true } label: {
                                 HStack {
                                     Image(systemName: "plus.circle.fill").font(.system(size: 16))
                                     Text("AGGIUNGI ESERCIZIO").font(.system(size: 12, weight: .bold))
@@ -177,51 +174,95 @@ struct WorkoutSessionView: View {
     }
 
     // MARK: - Superset Card
+    //
+    // Layout:
+    //  ┌─ accent bar (4pt) ─────────────────────────────┐
+    //  │  [SS] NOME SUPERSET          [link] [rec. 90s]  │  ← header scuro
+    //  ├────────────────────────────────────────────────┤
+    //  │  ① A  ESERCIZIO 1                               │
+    //  │     <ExerciseCardView normale>                  │
+    //  │  ─── divisore sottile ──────────────────────── │
+    //  │  ② B  ESERCIZIO 2                               │
+    //  │     <ExerciseCardView normale>                  │
+    //  └────────────────────────────────────────────────┘
 
     @ViewBuilder
     private func supersetCard(indices: [Int], name: String) -> some View {
         let restSec = localSession.exercises[indices[0]].restAfterSeconds
-        VStack(alignment: .leading, spacing: 0) {
-            // Header superset
-            HStack(spacing: 10) {
-                Image(systemName: "link")
-                    .font(.system(size: 13, weight: .black))
-                Text(name.uppercased())
-                    .font(.system(size: 13, weight: .black))
-                    .tracking(1)
-                Spacer()
-                // Badge recupero
-                HStack(spacing: 4) {
-                    Image(systemName: "timer").font(.system(size: 10, weight: .bold))
-                    Text(formatTime(restSec)).font(.system(size: 11, weight: .bold))
-                }
-                .foregroundColor(.black.opacity(0.7))
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(Capsule().fill(Color.white.opacity(0.3)))
-            }
-            .foregroundColor(.black)
-            .padding(.horizontal, 16).padding(.vertical, 12)
-            .background(Color.orange)
 
-            // Esercizi del superset con divisore
-            VStack(spacing: 0) {
+        HStack(spacing: 0) {
+            // Accent bar laterale sinistra
+            Rectangle()
+                .fill(ssColor)
+                .frame(width: 4)
+                .cornerRadius(2)
+
+            VStack(alignment: .leading, spacing: 0) {
+
+                // ── Header ──────────────────────────────────────
+                HStack(spacing: 8) {
+                    // Chip "SUPERSET"
+                    HStack(spacing: 5) {
+                        Image(systemName: "link")
+                            .font(.system(size: 10, weight: .black))
+                        Text("SUPERSET")
+                            .font(.system(size: 10, weight: .black))
+                            .tracking(1)
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(Capsule().fill(ssColor))
+
+                    // Nome superset
+                    Text(name.uppercased())
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    // Badge recupero
+                    HStack(spacing: 3) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(formatTime(restSec))
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(.white.opacity(0.55))
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Capsule().fill(Color.white.opacity(0.07)))
+                }
+                .padding(.horizontal, 14).padding(.vertical, 12)
+
+                // Divisore header / corpo
+                Rectangle()
+                    .fill(ssColor.opacity(0.25))
+                    .frame(height: 1)
+                    .padding(.horizontal, 14)
+
+                // ── Esercizi ────────────────────────────────────
                 ForEach(Array(indices.enumerated()), id: \.element) { pos, idx in
                     VStack(spacing: 0) {
-                        // Etichetta A / B / C
-                        HStack {
+                        // Etichetta A / B / C con nome
+                        HStack(spacing: 8) {
                             Text(String(UnicodeScalar(65 + pos)!))
-                                .font(.system(size: 11, weight: .black))
-                                .foregroundColor(.orange)
-                                .frame(width: 22, height: 22)
-                                .background(Circle().fill(Color.orange.opacity(0.15)))
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundColor(ssColor)
+                                .frame(width: 20, height: 20)
+                                .background(Circle().fill(ssColor.opacity(0.15)))
+
                             Text(localSession.exercises[idx].name.uppercased())
-                                .font(.system(size: 13, weight: .black))
-                                .foregroundColor(.orange)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white.opacity(0.75))
+                                .lineLimit(1)
+
                             Spacer()
                         }
-                        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 6)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 14)
+                        .padding(.bottom, 4)
 
-                        // Card esercizio embedded (senza padding esterno)
+                        // ExerciseCard standard (mantiene tutto lo stile normale)
                         ExerciseCardView(
                             exercise: $localSession.exercises[idx],
                             onDelete: {
@@ -233,36 +274,32 @@ struct WorkoutSessionView: View {
                                 startRest(seconds: seconds, label: name)
                             }
                         )
-                        .padding(.horizontal, 0)  // override padding interno
 
                         // Divisore tra esercizi (non dopo l'ultimo)
                         if pos < indices.count - 1 {
-                            HStack {
-                                Rectangle()
-                                    .fill(Color.orange.opacity(0.2))
-                                    .frame(height: 1)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 4)
+                            Rectangle()
+                                .fill(ssColor.opacity(0.15))
+                                .frame(height: 1)
+                                .padding(.horizontal, 14)
+                                .padding(.top, 6)
                         }
                     }
                 }
+
+                Spacer(minLength: 16)
             }
-            .padding(.bottom, 12)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.orange.opacity(0.06))
-        )
+        // Sfondo identico alle ExerciseCard normali + bordo destro sottile arancione
+        .background(Color.cardGradient)
+        .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.orange.opacity(0.5), lineWidth: 2)
+                .stroke(ssColor.opacity(0.3), lineWidth: 1)
         )
-        .cornerRadius(20)
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Start rest
+    // MARK: - Rest
     private func startRest(seconds: Int, label: String) {
         timerValuePreset = seconds
         remainingSeconds = seconds
