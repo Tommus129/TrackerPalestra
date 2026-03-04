@@ -15,7 +15,6 @@ struct DayDetailView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // Link invisibili per ADD
             NavigationLink(
                 destination: AddExerciseView(day: $day).environmentObject(viewModel),
                 isActive: $goToAddExercise
@@ -26,7 +25,6 @@ struct DayDetailView: View {
                 isActive: $goToAddSuperset
             ) { EmptyView() }.hidden()
 
-            // Link invisibili per EDIT esercizio
             if let idx = editingExerciseIdx, idx < day.items.count, day.items[idx].exercise != nil {
                 NavigationLink(
                     destination: EditExerciseView(item: $day.items[idx])
@@ -38,7 +36,6 @@ struct DayDetailView: View {
                 ) { EmptyView() }.hidden()
             }
 
-            // Link invisibili per EDIT superset
             if let idx = editingSupersetIdx, idx < day.items.count, day.items[idx].superset != nil {
                 NavigationLink(
                     destination: EditSupersetView(item: $day.items[idx])
@@ -147,7 +144,6 @@ struct DayDetailView: View {
 }
 
 // MARK: - ExerciseItemRow
-/// onTap = apri modifica (niente tasto trash: si elimina con swipe)
 struct ExerciseItemRow: View {
     let exercise: WorkoutPlanExercise
     let onTap: () -> Void
@@ -166,7 +162,7 @@ struct ExerciseItemRow: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                     HStack(spacing: 6) {
-                        Text("\(exercise.sets) \u00d7")
+                        Text("\(exercise.sets) ×")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white.opacity(0.6))
                         Text(exercise.repsDisplay)
@@ -177,7 +173,6 @@ struct ExerciseItemRow: View {
                                 .padding(.horizontal, 6).padding(.vertical, 3)
                                 .background(Capsule().fill(Color.acidGreen))
                         }
-                        // Badge recupero
                         HStack(spacing: 3) {
                             Image(systemName: "timer").font(.system(size: 8, weight: .bold))
                             Text(formatRest(exercise.restAfterSeconds))
@@ -192,7 +187,6 @@ struct ExerciseItemRow: View {
                     }
                 }
                 Spacer()
-                // Freccia che indica "modificabile"
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white.opacity(0.25))
@@ -208,7 +202,6 @@ struct ExerciseItemRow: View {
 }
 
 // MARK: - SupersetItemRow
-/// onTap = apri modifica (si elimina con swipe)
 struct SupersetItemRow: View {
     let superset: WorkoutPlanSuperset
     let onTap: () -> Void
@@ -236,7 +229,7 @@ struct SupersetItemRow: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(ex.name)
                                 .font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
-                            Text("\(ex.sets) \u00d7 \(ex.repsDisplay)")
+                            Text("\(ex.sets) × \(ex.repsDisplay)")
                                 .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
                         }
                         Spacer()
