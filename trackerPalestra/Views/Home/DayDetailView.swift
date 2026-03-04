@@ -1,19 +1,13 @@
 import SwiftUI
 
-// MARK: - Sheet type
-
-private enum AddSheetType: Identifiable {
-    case exercise, superset
-    var id: Int { hashValue }
-}
-
 // MARK: - DayDetailView
 
 struct DayDetailView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Binding var day: WorkoutPlanDay
 
-    @State private var activeSheet: AddSheetType?
+    @State private var showExerciseSheet = false
+    @State private var showSupersetSheet = false
 
     private let corner: CGFloat = 12
 
@@ -59,13 +53,11 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .sheet(item: $activeSheet) { type in
-            switch type {
-            case .exercise:
-                AddExerciseSheet(day: $day, viewModel: viewModel)
-            case .superset:
-                AddSupersetSheet(day: $day)
-            }
+        .sheet(isPresented: $showExerciseSheet) {
+            AddExerciseSheet(day: $day, viewModel: viewModel)
+        }
+        .sheet(isPresented: $showSupersetSheet) {
+            AddSupersetSheet(day: $day)
         }
         .onAppear { migrateLegacyIfNeeded() }
     }
@@ -98,7 +90,9 @@ struct DayDetailView: View {
 
     private var addButtons: some View {
         VStack(spacing: 10) {
-            Button { activeSheet = .exercise } label: {
+            Button {
+                showExerciseSheet = true
+            } label: {
                 Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(0.8)
@@ -108,7 +102,9 @@ struct DayDetailView: View {
                     .background(RoundedRectangle(cornerRadius: corner).fill(Color.acidGreen))
             }
 
-            Button { activeSheet = .superset } label: {
+            Button {
+                showSupersetSheet = true
+            } label: {
                 Label("AGGIUNGI SUPERSET", systemImage: "link")
                     .font(.system(size: 15, weight: .bold))
                     .tracking(0.8)
@@ -605,7 +601,6 @@ struct AddSupersetSheet: View {
                         }
                     Text("Diverse per serie").font(.caption2).foregroundColor(.gray)
                 }
-
                 if exStates[i].variableReps {
                     VStack(spacing: 6) {
                         ForEach(0..<exStates[i].sets, id: \.self) { s in
