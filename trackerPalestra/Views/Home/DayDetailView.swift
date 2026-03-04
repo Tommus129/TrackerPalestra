@@ -13,7 +13,6 @@ struct DayDetailView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // NavigationLink invisibili, attivati programmaticamente dai bottoni
             NavigationLink(
                 destination: AddExerciseView(day: $day).environmentObject(viewModel),
                 isActive: $goToAddExercise
@@ -155,7 +154,7 @@ struct ExerciseItemRow: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                 HStack(spacing: 6) {
-                    Text("\(exercise.sets) \u00d7")
+                    Text("\(exercise.sets) ×")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white.opacity(0.6))
                     Text(exercise.repsDisplay)
@@ -220,7 +219,7 @@ struct SupersetItemRow: View {
                         Text(ex.name)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.white)
-                        Text("\(ex.sets) \u00d7 \(ex.repsDisplay)")
+                        Text("\(ex.sets) × \(ex.repsDisplay)")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.acidGreen)
                     }
