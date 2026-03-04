@@ -23,22 +23,44 @@ struct WorkoutExerciseSession: Identifiable, Codable {
     var sets: [WorkoutSet]
     var isPR: Bool
     var exerciseNotes: String
-
-    // Campi superset — opzionali per retrocompatibilità con sessioni
-    // salvate prima dell'introduzione dei superset (campo assente in Firestore
-    // = nil, non errore di decodifica).
     var supersetGroupId: String? = nil
     var supersetName: String? = nil
 
-    // Int? invece di Int: i vecchi documenti Firestore non hanno questo campo,
-    // quindi il decoder non trova nulla e assegna nil senza lanciare errori.
-    // La computed property restAfterSeconds fornisce il fallback a 60s.
-    var _restAfterSeconds: Int?
+    // Stored come opzionale per retrocompatibilità Firestore:
+    // vecchi documenti senza il campo vengono decodificati come nil
+    // senza errori, invece di far saltare l'intera sessione.
+    private var _restAfterSeconds: Int?
 
-    /// Recupero effettivo in secondi. Usa il valore salvato se presente, 60 altrimenti.
+    /// Recupero effettivo in secondi (default 60 se assente in Firestore).
     var restAfterSeconds: Int {
         get { _restAfterSeconds ?? 60 }
         set { _restAfterSeconds = newValue }
+    }
+
+    // Init esplicito con label pubblica restAfterSeconds
+    // (evita che Swift generi il memberwise con _restAfterSeconds).
+    init(
+        id: String = UUID().uuidString,
+        exerciseId: String,
+        name: String,
+        isBodyweight: Bool,
+        sets: [WorkoutSet],
+        isPR: Bool,
+        exerciseNotes: String = "",
+        supersetGroupId: String? = nil,
+        supersetName: String? = nil,
+        restAfterSeconds: Int = 60
+    ) {
+        self.id = id
+        self.exerciseId = exerciseId
+        self.name = name
+        self.isBodyweight = isBodyweight
+        self.sets = sets
+        self.isPR = isPR
+        self.exerciseNotes = exerciseNotes
+        self.supersetGroupId = supersetGroupId
+        self.supersetName = supersetName
+        self._restAfterSeconds = restAfterSeconds
     }
 
     // MARK: Codable
