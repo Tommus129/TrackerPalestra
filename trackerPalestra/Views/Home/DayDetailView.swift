@@ -4,11 +4,25 @@ struct DayDetailView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Binding var day: WorkoutPlanDay
 
+    @State private var goToAddExercise = false
+    @State private var goToAddSuperset = false
+
     private let corner: CGFloat = 12
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+
+            // NavigationLink invisibili, attivati programmaticamente dai bottoni
+            NavigationLink(
+                destination: AddExerciseView(day: $day).environmentObject(viewModel),
+                isActive: $goToAddExercise
+            ) { EmptyView() }.hidden()
+
+            NavigationLink(
+                destination: AddSupersetView(day: $day),
+                isActive: $goToAddSuperset
+            ) { EmptyView() }.hidden()
 
             List {
                 Section {
@@ -36,9 +50,9 @@ struct DayDetailView: View {
                 .listRowSeparator(.hidden)
 
                 Section {
-                    // Pulsante AGGIUNGI ESERCIZIO → naviga a AddExerciseView
-                    NavigationLink(destination: AddExerciseView(day: $day)
-                        .environmentObject(viewModel)) {
+                    Button {
+                        goToAddExercise = true
+                    } label: {
                         Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
                             .font(.system(size: 15, weight: .bold))
                             .tracking(0.8)
@@ -47,11 +61,13 @@ struct DayDetailView: View {
                             .padding(.vertical, 14)
                             .background(RoundedRectangle(cornerRadius: corner).fill(Color.acidGreen))
                     }
+                    .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    // Pulsante AGGIUNGI SUPERSET → naviga a AddSupersetView
-                    NavigationLink(destination: AddSupersetView(day: $day)) {
+                    Button {
+                        goToAddSuperset = true
+                    } label: {
                         Label("AGGIUNGI SUPERSET", systemImage: "link")
                             .font(.system(size: 15, weight: .bold))
                             .tracking(0.8)
@@ -63,6 +79,7 @@ struct DayDetailView: View {
                                     .strokeBorder(Color.acidGreen, lineWidth: 1.5)
                             )
                     }
+                    .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                 }
@@ -138,7 +155,7 @@ struct ExerciseItemRow: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                 HStack(spacing: 6) {
-                    Text("\(exercise.sets) ×")
+                    Text("\(exercise.sets) \u00d7")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white.opacity(0.6))
                     Text(exercise.repsDisplay)
@@ -203,7 +220,7 @@ struct SupersetItemRow: View {
                         Text(ex.name)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.white)
-                        Text("\(ex.sets) × \(ex.repsDisplay)")
+                        Text("\(ex.sets) \u00d7 \(ex.repsDisplay)")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.acidGreen)
                     }
