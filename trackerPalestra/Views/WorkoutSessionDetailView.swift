@@ -49,15 +49,12 @@ struct WorkoutSessionDetailView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
-                    // ── Info sessione
                     infoCard
 
-                    // ── Note
                     if !session.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         notesCard
                     }
 
-                    // ── Esercizi
                     Text("ESERCIZI")
                         .font(.system(size: 11, weight: .black))
                         .foregroundColor(.acidGreen)
@@ -124,10 +121,9 @@ struct WorkoutSessionDetailView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Exercise Card (esercizio singolo)
+    // MARK: - Exercise Card
     private func exerciseCard(_ ex: WorkoutExerciseSession, accentColor: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
             HStack(spacing: 10) {
                 ZStack {
                     Circle().fill(accentColor.opacity(0.12)).frame(width: 36, height: 36)
@@ -153,15 +149,13 @@ struct WorkoutSessionDetailView: View {
                 }
             }
 
-            // Set table
             VStack(spacing: 6) {
-                // Header colonne
                 HStack {
                     Text("SET").frame(width: 28, alignment: .leading)
                     Text("REPS").frame(width: 50, alignment: .center)
                     if !ex.isBodyweight { Text("KG").frame(width: 60, alignment: .center) }
                     Spacer()
-                    Text("\u2713").frame(width: 24, alignment: .center)
+                    Text("✓").frame(width: 24, alignment: .center)
                 }
                 .font(.system(size: 9, weight: .black))
                 .foregroundColor(.white.opacity(0.3))
@@ -187,16 +181,12 @@ struct WorkoutSessionDetailView: View {
                             .frame(width: 24)
                     }
                     .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(set.isCompleted ? accentColor.opacity(0.06) : Color.clear)
-                    )
+                    .padding(.horizontal, 4).padding(.vertical, 3)
+                    .background(RoundedRectangle(cornerRadius: 6)
+                        .fill(set.isCompleted ? accentColor.opacity(0.06) : Color.clear))
                 }
             }
 
-            // Note esercizio
             if !ex.exerciseNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 6) {
                     Rectangle().fill(accentColor.opacity(0.4)).frame(width: 2)
@@ -215,14 +205,12 @@ struct WorkoutSessionDetailView: View {
     // MARK: - Superset Card
     private func supersetCard(exercises: [WorkoutExerciseSession], name: String) -> some View {
         HStack(spacing: 0) {
-            // Accent bar sinistra arancione
             Rectangle()
                 .fill(ssColor)
                 .frame(width: 4)
                 .cornerRadius(2)
 
             VStack(alignment: .leading, spacing: 0) {
-                // Header
                 HStack(spacing: 8) {
                     HStack(spacing: 5) {
                         Image(systemName: "link").font(.system(size: 10, weight: .black))
@@ -250,10 +238,8 @@ struct WorkoutSessionDetailView: View {
                     .frame(height: 1)
                     .padding(.horizontal, 14)
 
-                // Esercizi del blocco
                 ForEach(Array(exercises.enumerated()), id: \.element.id) { pos, ex in
                     VStack(spacing: 0) {
-                        // Label A / B / C + nome
                         HStack(spacing: 8) {
                             Text(String(UnicodeScalar(65 + pos)!))
                                 .font(.system(size: 10, weight: .black))
@@ -273,14 +259,13 @@ struct WorkoutSessionDetailView: View {
                         }
                         .padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 8)
 
-                        // Tabella set
                         VStack(spacing: 6) {
                             HStack {
                                 Text("SET").frame(width: 28, alignment: .leading)
                                 Text("REPS").frame(width: 50, alignment: .center)
                                 if !ex.isBodyweight { Text("KG").frame(width: 60, alignment: .center) }
                                 Spacer()
-                                Text("\u2713").frame(width: 24, alignment: .center)
+                                Text("✓").frame(width: 24, alignment: .center)
                             }
                             .font(.system(size: 9, weight: .black))
                             .foregroundColor(.white.opacity(0.3))
@@ -307,15 +292,12 @@ struct WorkoutSessionDetailView: View {
                                 }
                                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                                 .padding(.horizontal, 18).padding(.vertical, 3)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(set.isCompleted ? ssColor.opacity(0.06) : Color.clear)
-                                )
+                                .background(RoundedRectangle(cornerRadius: 6)
+                                    .fill(set.isCompleted ? ssColor.opacity(0.06) : Color.clear))
                             }
                         }
                         .padding(.bottom, 10)
 
-                        // Note esercizio
                         if !ex.exerciseNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             HStack(spacing: 6) {
                                 Rectangle().fill(ssColor.opacity(0.4)).frame(width: 2)
@@ -325,7 +307,6 @@ struct WorkoutSessionDetailView: View {
                             .padding(.horizontal, 18).padding(.bottom, 8)
                         }
 
-                        // Divisore tra esercizi del superset
                         if pos < exercises.count - 1 {
                             Rectangle()
                                 .fill(ssColor.opacity(0.15))
