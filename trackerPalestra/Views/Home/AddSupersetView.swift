@@ -19,9 +19,8 @@ struct SupersetExState {
     }
 }
 
-/// View dedicata alla creazione di un superset.
-/// Viene navigata tramite NavigationLink da DayDetailView — nessun modal coinvolto.
 struct AddSupersetView: View {
+    @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
     @Binding var day: WorkoutPlanDay
 
@@ -126,21 +125,50 @@ struct AddSupersetView: View {
     @ViewBuilder
     private func supersetExRow(index i: Int) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("\(i + 1).")
-                    .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
-                TextField("Nome esercizio", text: $exStates[i].name)
-                    .foregroundColor(.white).accentColor(.acidGreen)
-                if exStates.count > 2 {
-                    Button(role: .destructive) {
-                        exStates.remove(at: i)
-                    } label: {
-                        Image(systemName: "trash").foregroundColor(.red.opacity(0.7))
+
+            // Nome + autocomplete
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("\(i + 1).")
+                        .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
+                    TextField("Nome esercizio", text: $exStates[i].name)
+                        .foregroundColor(.white).accentColor(.acidGreen)
+                    if exStates.count > 2 {
+                        Button(role: .destructive) {
+                            exStates.remove(at: i)
+                        } label: {
+                            Image(systemName: "trash").foregroundColor(.red.opacity(0.7))
+                        }
+                    }
+                }
+                .padding(12).background(fieldBg)
+
+                // Suggerimenti autocomplete
+                let suggestions = suggestions(for: exStates[i].name)
+                if !suggestions.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(suggestions, id: \.self) { suggestion in
+                                Button {
+                                    exStates[i].name = suggestion
+                                } label: {
+                                    Text(suggestion)
+                                        .font(.subheadline).fontWeight(.medium)
+                                        .foregroundColor(.acidGreen)
+                                        .padding(.horizontal, 14).padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.acidGreen.opacity(0.1))
+                                                .overlay(Capsule().strokeBorder(Color.acidGreen.opacity(0.3), lineWidth: 1))
+                                        )
+                                }
+                            }
+                        }
                     }
                 }
             }
-            .padding(12).background(fieldBg)
 
+            // Serie
             HStack(spacing: 16) {
                 Text("SERIE").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                 stepButton(icon: "minus") {
@@ -161,6 +189,7 @@ struct AddSupersetView: View {
             }
             .padding(10).background(fieldBg)
 
+            // Ripetizioni
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("RIPETIZIONI").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
@@ -215,6 +244,13 @@ struct AddSupersetView: View {
     }
 
     // MARK: - Helpers
+
+    private func suggestions(for text: String) -> [String] {
+        guard !text.isEmpty else { return [] }
+        return viewModel.exerciseNames.filter {
+            $0.lowercased().contains(text.lowercased()) && $0.lowercased() != text.lowercased()
+        }
+    }
 
     private func label(_ text: String) -> some View {
         Text(text).font(.caption).fontWeight(.bold).foregroundColor(.acidGreen).tracking(1)
