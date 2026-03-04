@@ -29,6 +29,39 @@ struct WorkoutPlanDay: Identifiable, Codable, Hashable {
         if !items.isEmpty { return items }
         return (exercises ?? []).map { WorkoutPlanItem(kind: .exercise, exercise: $0) }
     }
+
+    // MARK: - CodingKeys
+    enum CodingKeys: String, CodingKey {
+        case id, label, items, exercises
+    }
+
+    // Decodifica robusta: tolera documenti vecchi senza il campo "items"
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id        = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        label     = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        items     = try c.decodeIfPresent([WorkoutPlanItem].self, forKey: .items) ?? []
+        exercises = try c.decodeIfPresent([WorkoutPlanExercise].self, forKey: .exercises)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id,        forKey: .id)
+        try c.encode(label,     forKey: .label)
+        try c.encode(items,     forKey: .items)
+        try c.encodeIfPresent(exercises, forKey: .exercises)
+    }
+
+    // Memberwise init per uso in-app
+    init(id: String = UUID().uuidString,
+         label: String,
+         items: [WorkoutPlanItem] = [],
+         exercises: [WorkoutPlanExercise]? = nil) {
+        self.id = id
+        self.label = label
+        self.items = items
+        self.exercises = exercises
+    }
 }
 
 // MARK: - WorkoutPlanItem
@@ -70,18 +103,17 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
 
     // MARK: Helpers
 
-    /// Reps da mostrare in formato leggibile: "10 9 9 8" o "8"
     var repsDisplay: String {
         repsBySet.map { String($0) }.joined(separator: " ")
     }
 
-    /// Reps per la serie n (0-indexed). Fallback all'ultimo valore.
     func reps(forSet index: Int) -> Int {
         if repsBySet.count == 1 { return repsBySet[0] }
         return repsBySet[min(index, repsBySet.count - 1)]
     }
 
-    // MARK: Legacy convenience init (backward compat)
+    // MARK: Inits
+
     init(id: String = UUID().uuidString,
          name: String,
          sets: Int,
@@ -96,7 +128,6 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
         self.notes = notes
     }
 
-    // MARK: Old-style init (defaultSets/defaultReps) – usato da codice legacy
     init(id: String = UUID().uuidString,
          name: String,
          defaultSets: Int,
@@ -111,7 +142,6 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
         self.notes = notes
     }
 
-    // Firestore può salvare il vecchio formato; supportiamo la decodifica
     enum CodingKeys: String, CodingKey {
         case id, name, sets, repsBySet, isBodyweight, notes
         case defaultSets, defaultReps
@@ -128,7 +158,6 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
             repsBySet = rbs
             sets = try c.decodeIfPresent(Int.self, forKey: .sets) ?? rbs.count
         } else {
-            // legacy
             let s = try c.decodeIfPresent(Int.self, forKey: .defaultSets) ?? (try c.decodeIfPresent(Int.self, forKey: .sets) ?? 3)
             let r = try c.decodeIfPresent(Int.self, forKey: .defaultReps) ?? 8
             sets = s
@@ -138,11 +167,11 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(sets, forKey: .sets)
-        try c.encode(repsBySet, forKey: .repsBySet)
+        try c.encode(id,          forKey: .id)
+        try c.encode(name,        forKey: .name)
+        try c.encode(sets,        forKey: .sets)
+        try c.encode(repsBySet,   forKey: .repsBySet)
         try c.encode(isBodyweight, forKey: .isBodyweight)
-        try c.encode(notes, forKey: .notes)
+        try c.encode(notes,       forKey: .notes)
     }
 }
