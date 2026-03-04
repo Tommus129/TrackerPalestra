@@ -23,13 +23,30 @@ struct WorkoutExerciseSession: Identifiable, Codable {
     var sets: [WorkoutSet]
     var isPR: Bool
     var exerciseNotes: String
-    /// Se l'esercizio appartiene a un superset, tutti gli esercizi del blocco
-    /// condividono lo stesso valore. nil = esercizio normale.
+
+    // Campi superset — opzionali per retrocompatibilità con sessioni
+    // salvate prima dell'introduzione dei superset (campo assente in Firestore
+    // = nil, non errore di decodifica).
     var supersetGroupId: String? = nil
-    /// Nome del superset (es. "A1/A2") mostrato nell'header del blocco.
     var supersetName: String? = nil
-    /// Recupero in secondi configurato nella scheda.
-    var restAfterSeconds: Int = 60
+
+    // Int? invece di Int: i vecchi documenti Firestore non hanno questo campo,
+    // quindi il decoder non trova nulla e assegna nil senza lanciare errori.
+    // La computed property restAfterSeconds fornisce il fallback a 60s.
+    var _restAfterSeconds: Int?
+
+    /// Recupero effettivo in secondi. Usa il valore salvato se presente, 60 altrimenti.
+    var restAfterSeconds: Int {
+        get { _restAfterSeconds ?? 60 }
+        set { _restAfterSeconds = newValue }
+    }
+
+    // MARK: Codable
+    enum CodingKeys: String, CodingKey {
+        case id, exerciseId, name, isBodyweight, sets, isPR, exerciseNotes
+        case supersetGroupId, supersetName
+        case _restAfterSeconds = "restAfterSeconds"
+    }
 }
 
 // MARK: - WorkoutSession
