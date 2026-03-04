@@ -57,7 +57,7 @@ final class MainViewModel: ObservableObject {
             }
     }
 
-    // MARK: - Ordinamento (Drag & Drop)
+    // MARK: - Ordinamento
 
     func movePlan(from source: IndexSet, to destination: Int) {
         plans.move(fromOffsets: source, toOffset: destination)
@@ -98,28 +98,19 @@ final class MainViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Gestione Schede (Piani)
+    // MARK: - Gestione Schede
 
     func prepareNewPlan() {
-        guard let userId = userId, !userId.isEmpty else {
-            print("❌ Errore: userId non disponibile")
-            return
-        }
+        guard let userId = userId, !userId.isEmpty else { return }
         editingPlan = WorkoutPlan(
-            id: nil,
-            userId: userId,
-            name: "Nuova scheda",
+            id: nil, userId: userId, name: "Nuova scheda",
             days: [WorkoutPlanDay(id: UUID().uuidString, label: "Giorno A", items: [])],
-            createdAt: Date(),
-            order: plans.count
+            createdAt: Date(), order: plans.count
         )
-        print("✅ Nuova scheda preparata per userId: \(userId)")
     }
 
     func saveEditingPlan(completion: @escaping (Bool) -> Void) {
         guard var plan = editingPlan else { return }
-
-        // Normalizza i nomi di tutti gli esercizi (sia singoli che in superset)
         for i in plan.days.indices {
             for j in plan.days[i].items.indices {
                 switch plan.days[i].items[j].kind {
@@ -130,27 +121,20 @@ final class MainViewModel: ObservableObject {
                     }
                 case .superset:
                     if var ss = plan.days[i].items[j].superset {
-                        for k in ss.exercises.indices {
-                            ss.exercises[k].name = normalizeName(ss.exercises[k].name)
-                        }
+                        for k in ss.exercises.indices { ss.exercises[k].name = normalizeName(ss.exercises[k].name) }
                         plan.days[i].items[j].superset = ss
                     }
                 }
             }
         }
-
         FirestoreService.shared.savePlan(plan) { [weak self] success in
             if success {
                 self?.loadPlans()
-
-                // Aggiorna dataset nomi dalla libreria globale
                 let names = Set(plan.days.flatMap { day -> [String] in
                     day.items.flatMap { item -> [String] in
                         switch item.kind {
-                        case .exercise:
-                            return [item.exercise?.name].compactMap { $0 }
-                        case .superset:
-                            return item.superset?.exercises.map { $0.name } ?? []
+                        case .exercise: return [item.exercise?.name].compactMap { $0 }
+                        case .superset: return item.superset?.exercises.map { $0.name } ?? []
                         }
                     }
                 })
@@ -161,46 +145,56 @@ final class MainViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Gestione Sessioni (Allenamenti)
+    // MARK: - Sessioni
 
     func makeSession(plan: WorkoutPlan, day: WorkoutPlanDay) -> WorkoutSession {
-        // Estrae tutti gli esercizi dal giorno (singoli + quelli dentro superset)
-        let allExercises: [WorkoutPlanExercise] = day.resolvedItems.flatMap { item -> [WorkoutPlanExercise] in
+        var exercises: [WorkoutExerciseSession] = []
+
+        for item in day.resolvedItems {
             switch item.kind {
             case .exercise:
-                return [item.exercise].compactMap { $0 }
+                guard let ex = item.exercise else { continue }
+                exercises.append(WorkoutExerciseSession(
+                    exerciseId: ex.id,
+                    name: ex.name,
+                    isBodyweight: ex.isBodyweight,
+                    sets: (0..<ex.sets).map { idx in
+                        WorkoutSet(id: UUID().uuidString, setIndex: idx,
+                                   reps: ex.reps(forSet: idx), weight: 0, isPR: false)
+                    },
+                    isPR: false,
+                    exerciseNotes: ex.notes,
+                    supersetGroupId: nil,
+                    supersetName: nil,
+                    restAfterSeconds: ex.restAfterSeconds
+                ))
+
             case .superset:
-                return item.superset?.exercises ?? []
+                guard let ss = item.superset else { continue }
+                let groupId = UUID().uuidString
+                for ex in ss.exercises {
+                    exercises.append(WorkoutExerciseSession(
+                        exerciseId: ex.id,
+                        name: ex.name,
+                        isBodyweight: ex.isBodyweight,
+                        sets: (0..<ex.sets).map { idx in
+                            WorkoutSet(id: UUID().uuidString, setIndex: idx,
+                                       reps: ex.reps(forSet: idx), weight: 0, isPR: false)
+                        },
+                        isPR: false,
+                        exerciseNotes: ex.notes,
+                        supersetGroupId: groupId,
+                        supersetName: ss.name,
+                        restAfterSeconds: ss.restAfterSeconds
+                    ))
+                }
             }
         }
 
-        let exercises = allExercises.map { ex in
-            WorkoutExerciseSession(
-                exerciseId: ex.id,
-                name: ex.name,
-                isBodyweight: ex.isBodyweight,
-                sets: (0..<ex.sets).map { idx in
-                    WorkoutSet(
-                        id: UUID().uuidString,
-                        setIndex: idx,
-                        reps: ex.reps(forSet: idx),
-                        weight: 0,
-                        isPR: false
-                    )
-                },
-                isPR: false,
-                exerciseNotes: ex.notes
-            )
-        }
-
         return WorkoutSession(
-            id: UUID().uuidString,
-            userId: userId ?? "",
-            planId: plan.id ?? "",
-            dayId: day.id,
-            date: Date(),
-            notes: "",
-            exercises: exercises
+            id: UUID().uuidString, userId: userId ?? "",
+            planId: plan.id ?? "", dayId: day.id,
+            date: Date(), notes: "", exercises: exercises
         )
     }
 
@@ -219,7 +213,7 @@ final class MainViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Analisi e Ghost Sets
+    // MARK: - Analisi
 
     func getLastMaxWeight(for exerciseName: String) -> Double? {
         let targetName = normalizeName(exerciseName)

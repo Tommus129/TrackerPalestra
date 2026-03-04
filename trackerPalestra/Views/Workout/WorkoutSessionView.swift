@@ -2,14 +2,24 @@ import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 
+// MARK: - SessionItem: unità di rendering (esercizio singolo o gruppo superset)
+private enum SessionItem: Identifiable {
+    case single(indices: [Int])          // sempre 1 elemento
+    case superset(indices: [Int], groupId: String, name: String)
+
+    var id: String {
+        switch self {
+        case .single(let idx): return "s_\(idx[0])"
+        case .superset(_, let gid, _): return "ss_\(gid)"
+        }
+    }
+}
+
 struct WorkoutSessionView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
     @State private var localSession: WorkoutSession
     var onSave: (WorkoutSession) -> Void
-
-    // Mappa exerciseId -> restSeconds dalla scheda originale
-    var restSecondsMap: [String: Int]
 
     @State private var remainingSeconds: Int = 60
     @State private var isTimerRunning: Bool = false
@@ -19,10 +29,33 @@ struct WorkoutSessionView: View {
     @State private var showFullScreenTimer = false
     @State private var currentRestLabel: String = "RECUPERO"
 
-    init(session: WorkoutSession, restSecondsMap: [String: Int] = [:], onSave: @escaping (WorkoutSession) -> Void) {
+    init(session: WorkoutSession, onSave: @escaping (WorkoutSession) -> Void) {
         _localSession = State(initialValue: session)
-        self.restSecondsMap = restSecondsMap
         self.onSave = onSave
+    }
+
+    // Raggruppa gli esercizi mantenendo l'ordine originale
+    private var sessionItems: [SessionItem] {
+        var result: [SessionItem] = []
+        var i = 0
+        while i < localSession.exercises.count {
+            let ex = localSession.exercises[i]
+            if let gid = ex.supersetGroupId {
+                var indices = [i]
+                var j = i + 1
+                while j < localSession.exercises.count,
+                      localSession.exercises[j].supersetGroupId == gid {
+                    indices.append(j)
+                    j += 1
+                }
+                result.append(.superset(indices: indices, groupId: gid, name: ex.supersetName ?? "Superset"))
+                i = j
+            } else {
+                result.append(.single(indices: [i]))
+                i += 1
+            }
+        }
+        return result
     }
 
     var body: some View {
@@ -34,7 +67,7 @@ struct WorkoutSessionView: View {
                 compactHeaderView
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 25) {
+                    VStack(spacing: 20) {
                         // Data Picker
                         HStack {
                             Image(systemName: "calendar")
@@ -45,28 +78,29 @@ struct WorkoutSessionView: View {
                         .background(Capsule().fill(Color.white.opacity(0.05)))
                         .padding(.top, 20)
 
-                        // Esercizi
-                        ForEach(Array(localSession.exercises.enumerated()), id: \.element.id) { index, exercise in
-                            let rest = restSecondsMap[exercise.exerciseId] ?? 60
-                            ExerciseCardView(
-                                exercise: $localSession.exercises[index],
-                                onDelete: {
-                                    withAnimation {
-                                        localSession.exercises.remove(at: index)
+                        // Rendering items
+                        ForEach(sessionItems) { item in
+                            switch item {
+                            case .single(let indices):
+                                let idx = indices[0]
+                                ExerciseCardView(
+                                    exercise: $localSession.exercises[idx],
+                                    onDelete: {
+                                        withAnimation { localSession.exercises.remove(at: idx) }
                                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    },
+                                    restSeconds: localSession.exercises[idx].restAfterSeconds,
+                                    onStartRest: { seconds in
+                                        startRest(seconds: seconds, label: localSession.exercises[idx].name)
                                     }
-                                },
-                                restSeconds: rest,
-                                onStartRest: { seconds in
-                                    startRest(seconds: seconds, label: exercise.name)
-                                }
-                            )
-                            .onDrag { NSItemProvider(object: String(index) as NSString) }
-                            .onDrop(of: [UTType.text], delegate: ExerciseDropDelegate(
-                                exercises: $localSession.exercises, draggedIndex: index))
+                                )
+
+                            case .superset(let indices, _, let ssName):
+                                supersetCard(indices: indices, name: ssName)
+                            }
                         }
 
-                        // Note
+                        // Note generali
                         VStack(alignment: .leading, spacing: 10) {
                             Text("NOTE GENERALI ALLENAMENTO")
                                 .font(.system(size: 10, weight: .black)).foregroundColor(.acidGreen).tracking(2)
@@ -129,21 +163,106 @@ struct WorkoutSessionView: View {
             }
         }
         .onReceive(timer) { _ in
-            if isTimerRunning && remainingSeconds > 0 {
-                remainingSeconds -= 1
-                if remainingSeconds == 0 {
-                    isTimerRunning = false
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
-                    }
+            guard isTimerRunning, remainingSeconds > 0 else { return }
+            remainingSeconds -= 1
+            if remainingSeconds == 0 {
+                isTimerRunning = false
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
                 }
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showFullScreenTimer)
     }
 
-    // MARK: - Start rest helper
+    // MARK: - Superset Card
+
+    @ViewBuilder
+    private func supersetCard(indices: [Int], name: String) -> some View {
+        let restSec = localSession.exercises[indices[0]].restAfterSeconds
+        VStack(alignment: .leading, spacing: 0) {
+            // Header superset
+            HStack(spacing: 10) {
+                Image(systemName: "link")
+                    .font(.system(size: 13, weight: .black))
+                Text(name.uppercased())
+                    .font(.system(size: 13, weight: .black))
+                    .tracking(1)
+                Spacer()
+                // Badge recupero
+                HStack(spacing: 4) {
+                    Image(systemName: "timer").font(.system(size: 10, weight: .bold))
+                    Text(formatTime(restSec)).font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.black.opacity(0.7))
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Capsule().fill(Color.white.opacity(0.3)))
+            }
+            .foregroundColor(.black)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .background(Color.orange)
+
+            // Esercizi del superset con divisore
+            VStack(spacing: 0) {
+                ForEach(Array(indices.enumerated()), id: \.element) { pos, idx in
+                    VStack(spacing: 0) {
+                        // Etichetta A / B / C
+                        HStack {
+                            Text(String(UnicodeScalar(65 + pos)!))
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundColor(.orange)
+                                .frame(width: 22, height: 22)
+                                .background(Circle().fill(Color.orange.opacity(0.15)))
+                            Text(localSession.exercises[idx].name.uppercased())
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundColor(.orange)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 6)
+
+                        // Card esercizio embedded (senza padding esterno)
+                        ExerciseCardView(
+                            exercise: $localSession.exercises[idx],
+                            onDelete: {
+                                withAnimation { localSession.exercises.remove(at: idx) }
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            },
+                            restSeconds: restSec,
+                            onStartRest: { seconds in
+                                startRest(seconds: seconds, label: name)
+                            }
+                        )
+                        .padding(.horizontal, 0)  // override padding interno
+
+                        // Divisore tra esercizi (non dopo l'ultimo)
+                        if pos < indices.count - 1 {
+                            HStack {
+                                Rectangle()
+                                    .fill(Color.orange.opacity(0.2))
+                                    .frame(height: 1)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+            }
+            .padding(.bottom, 12)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.orange.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.orange.opacity(0.5), lineWidth: 2)
+        )
+        .cornerRadius(20)
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Start rest
     private func startRest(seconds: Int, label: String) {
         timerValuePreset = seconds
         remainingSeconds = seconds
@@ -163,14 +282,12 @@ struct WorkoutSessionView: View {
                 }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: isTimerRunning ? "timer" : "timer")
-                        .font(.system(size: 16))
+                    Image(systemName: "timer").font(.system(size: 16))
                     if isTimerRunning {
                         Text(formatTime(remainingSeconds))
                             .font(.system(size: 13, weight: .black, design: .monospaced))
                     } else {
-                        Text("RECUPERO")
-                            .font(.system(size: 11, weight: .bold))
+                        Text("RECUPERO").font(.system(size: 11, weight: .bold))
                     }
                 }
                 .padding(.horizontal, 16).padding(.vertical, 10)
@@ -192,10 +309,8 @@ struct WorkoutSessionView: View {
             Color.black.opacity(0.95).ignoresSafeArea()
             VStack(spacing: 40) {
                 Spacer()
-                // Etichetta esercizio
                 Text(currentRestLabel)
                     .font(.system(size: 13, weight: .bold)).foregroundColor(.white.opacity(0.5)).tracking(2)
-
                 ZStack {
                     Circle().stroke(Color.deepPurple.opacity(0.2), lineWidth: 16)
                     Circle()
@@ -213,9 +328,7 @@ struct WorkoutSessionView: View {
                 }
                 .frame(width: 280, height: 280)
                 Spacer()
-
                 VStack(spacing: 20) {
-                    // Preset rapidi
                     HStack(spacing: 12) {
                         ForEach([30, 60, 90, 120], id: \.self) { seconds in
                             Button {
@@ -235,13 +348,11 @@ struct WorkoutSessionView: View {
                     }
                     HStack(spacing: 15) {
                         Button {
-                            isTimerRunning = false
-                            remainingSeconds = timerValuePreset
+                            isTimerRunning = false; remainingSeconds = timerValuePreset
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         } label: {
                             Image(systemName: "arrow.counterclockwise").font(.system(size: 20, weight: .bold)).foregroundColor(.white)
-                                .frame(width: 70, height: 70)
-                                .background(Circle().fill(Color.white.opacity(0.1)))
+                                .frame(width: 70, height: 70).background(Circle().fill(Color.white.opacity(0.1)))
                         }
                         Button {
                             isTimerRunning.toggle()
@@ -256,8 +367,7 @@ struct WorkoutSessionView: View {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
                         } label: {
                             Image(systemName: "xmark").font(.system(size: 20, weight: .bold)).foregroundColor(.white.opacity(0.6))
-                                .frame(width: 70, height: 70)
-                                .background(Circle().fill(Color.white.opacity(0.1)))
+                                .frame(width: 70, height: 70).background(Circle().fill(Color.white.opacity(0.1)))
                         }
                     }
                 }
@@ -266,9 +376,10 @@ struct WorkoutSessionView: View {
         }
     }
 
+    // MARK: - Helpers
     private func formatTime(_ seconds: Int) -> String {
-        let mins = seconds / 60; let secs = seconds % 60
-        return mins > 0 ? String(format: "%d:%02d", mins, secs) : "\(secs)"
+        let m = seconds / 60; let s = seconds % 60
+        return m > 0 ? String(format: "%d:%02d", m, s) : "\(s)s"
     }
 
     private func addExtraExercise(named name: String) {
