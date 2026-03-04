@@ -1,13 +1,19 @@
 import SwiftUI
 
+// MARK: - Modal destination
+
+private enum DayModal: String, Identifiable {
+    case exercise, superset
+    var id: String { rawValue }
+}
+
 // MARK: - DayDetailView
 
 struct DayDetailView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Binding var day: WorkoutPlanDay
 
-    @State private var showAddExercise = false
-    @State private var showAddSuperset = false
+    @State private var modal: DayModal? = nil
 
     private let corner: CGFloat = 12
 
@@ -53,12 +59,19 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .fullScreenCover(isPresented: $showAddExercise) {
-            AddExerciseSheet(day: $day, viewModel: viewModel)
-        }
-        .fullScreenCover(isPresented: $showAddSuperset) {
-            AddSupersetSheet(day: $day)
-        }
+        .background(
+            // Il fullScreenCover è attaccato a un EmptyView in background:
+            // questo lo rende completamente indipendente dalla gerarchia modale del parent.
+            EmptyView()
+                .fullScreenCover(item: $modal) { destination in
+                    switch destination {
+                    case .exercise:
+                        AddExerciseSheet(day: $day, viewModel: viewModel)
+                    case .superset:
+                        AddSupersetSheet(day: $day)
+                    }
+                }
+        )
         .onAppear { migrateLegacyIfNeeded() }
     }
 
@@ -91,7 +104,7 @@ struct DayDetailView: View {
     private var addButtons: some View {
         VStack(spacing: 10) {
             Button {
-                showAddExercise = true
+                modal = .exercise
             } label: {
                 Label("AGGIUNGI ESERCIZIO", systemImage: "plus")
                     .font(.system(size: 15, weight: .bold))
@@ -103,7 +116,7 @@ struct DayDetailView: View {
             }
 
             Button {
-                showAddSuperset = true
+                modal = .superset
             } label: {
                 Label("AGGIUNGI SUPERSET", systemImage: "link")
                     .font(.system(size: 15, weight: .bold))
