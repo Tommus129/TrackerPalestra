@@ -24,11 +24,13 @@ struct AddSupersetView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var day: WorkoutPlanDay
 
+    @State private var isCircuit = false
     @State private var supersetName = "Superset"
     @State private var restSeconds = 60
     @State private var exStates: [SupersetExState] = [SupersetExState(), SupersetExState()]
 
     private let corner: CGFloat = 12
+    private var accent: Color { isCircuit ? .cyan : .acidGreen }
 
     var canSave: Bool {
         exStates.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -39,6 +41,7 @@ struct AddSupersetView: View {
             Color.black.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    typeToggle
                     nameSection
                     restSection
                     exercisesSection
@@ -47,7 +50,7 @@ struct AddSupersetView: View {
                 .padding()
             }
         }
-        .navigationTitle("Nuovo Superset")
+        .navigationTitle(isCircuit ? "Nuovo Circuito" : "Nuovo Superset")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -62,17 +65,65 @@ struct AddSupersetView: View {
 
     // MARK: - Sections
 
+    /// Toggle Superset / Circuito in cima
+    private var typeToggle: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            label("TIPO")
+            HStack(spacing: 0) {
+                typeButton(title: "SUPERSET", icon: "link", selected: !isCircuit) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        isCircuit = false
+                        if supersetName == "Circuito" { supersetName = "Superset" }
+                    }
+                }
+                typeButton(title: "CIRCUITO", icon: "arrow.3.trianglepath", selected: isCircuit) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        isCircuit = true
+                        if supersetName == "Superset" { supersetName = "Circuito" }
+                    }
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: corner).fill(Color.white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.white.opacity(0.08), lineWidth: 1))
+
+            // Descrizione del tipo selezionato
+            Text(isCircuit
+                 ? "Il timer parte dopo che tutti gli esercizi del giro sono stati completati."
+                 : "Il timer parte dopo ogni singolo giro completo degli esercizi.")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.4))
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private func typeButton(title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).font(.system(size: 11, weight: .bold))
+                Text(title).font(.system(size: 12, weight: .black)).tracking(0.5)
+            }
+            .foregroundColor(selected ? .black : .white.opacity(0.4))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: corner)
+                    .fill(selected ? accent : Color.clear)
+            )
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selected)
+        }
+    }
+
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            label("NOME SUPERSET")
-            TextField("Es. A1/A2", text: $supersetName)
-                .foregroundColor(.white).padding(14).background(fieldBg).accentColor(.acidGreen)
+            label(isCircuit ? "NOME CIRCUITO" : "NOME SUPERSET")
+            TextField(isCircuit ? "Es. Circuito A" : "Es. A1/A2", text: $supersetName)
+                .foregroundColor(.white).padding(14).background(fieldBg).accentColor(accent)
         }
     }
 
     private var restSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            label("RECUPERO DOPO BLOCCO (secondi)")
+            label(isCircuit ? "RECUPERO DOPO OGNI GIRO" : "RECUPERO DOPO BLOCCO (secondi)")
             HStack(spacing: 16) {
                 stepButton(icon: "minus") { if restSeconds >= 15 { restSeconds -= 15 } }
                 Text("\(restSeconds)\"")
@@ -81,12 +132,24 @@ struct AddSupersetView: View {
                 Spacer()
             }
             .padding(14).background(fieldBg)
+            // Preset rapidi
+            HStack(spacing: 8) {
+                ForEach([30, 60, 90, 120, 180], id: \.self) { sec in
+                    Button { restSeconds = sec } label: {
+                        Text(sec < 60 ? "\(sec)s" : "\(sec/60)m")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(restSeconds == sec ? .black : accent)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Capsule().fill(restSeconds == sec ? accent : accent.opacity(0.1)))
+                    }
+                }
+            }
         }
     }
 
     private var exercisesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            label("ESERCIZI NEL SUPERSET")
+            label(isCircuit ? "ESERCIZI NEL CIRCUITO" : "ESERCIZI NEL SUPERSET")
             ForEach(exStates.indices, id: \.self) { i in
                 supersetExRow(index: i)
             }
@@ -95,25 +158,25 @@ struct AddSupersetView: View {
             } label: {
                 Label("Aggiungi esercizio", systemImage: "plus")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.acidGreen)
+                    .foregroundColor(accent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(RoundedRectangle(cornerRadius: corner)
-                        .strokeBorder(Color.acidGreen.opacity(0.5), lineWidth: 1))
+                        .strokeBorder(accent.opacity(0.5), lineWidth: 1))
             }
         }
     }
 
     private var saveButton: some View {
         Button(action: save) {
-            Text("AGGIUNGI SUPERSET")
+            Text(isCircuit ? "AGGIUNGI CIRCUITO" : "AGGIUNGI SUPERSET")
                 .font(.system(size: 15, weight: .bold)).tracking(0.8)
                 .foregroundColor(canSave ? .black : .gray.opacity(0.4))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: corner)
-                        .fill(canSave ? Color.acidGreen : Color.gray.opacity(0.2))
+                        .fill(canSave ? accent : Color.gray.opacity(0.2))
                 )
         }
         .disabled(!canSave)
@@ -130,9 +193,9 @@ struct AddSupersetView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("\(i + 1).")
-                        .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
+                        .font(.system(size: 13, weight: .bold)).foregroundColor(accent)
                     TextField("Nome esercizio", text: $exStates[i].name)
-                        .foregroundColor(.white).accentColor(.acidGreen)
+                        .foregroundColor(.white).accentColor(accent)
                     if exStates.count > 2 {
                         Button(role: .destructive) {
                             exStates.remove(at: i)
@@ -143,23 +206,19 @@ struct AddSupersetView: View {
                 }
                 .padding(12).background(fieldBg)
 
-                // Suggerimenti autocomplete
                 let suggestions = suggestions(for: exStates[i].name)
                 if !suggestions.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(suggestions, id: \.self) { suggestion in
-                                Button {
-                                    exStates[i].name = suggestion
-                                } label: {
+                                Button { exStates[i].name = suggestion } label: {
                                     Text(suggestion)
                                         .font(.subheadline).fontWeight(.medium)
-                                        .foregroundColor(.acidGreen)
+                                        .foregroundColor(accent)
                                         .padding(.horizontal, 14).padding(.vertical, 8)
                                         .background(
-                                            Capsule()
-                                                .fill(Color.acidGreen.opacity(0.1))
-                                                .overlay(Capsule().strokeBorder(Color.acidGreen.opacity(0.3), lineWidth: 1))
+                                            Capsule().fill(accent.opacity(0.1))
+                                                .overlay(Capsule().strokeBorder(accent.opacity(0.3), lineWidth: 1))
                                         )
                                 }
                             }
@@ -172,18 +231,12 @@ struct AddSupersetView: View {
             HStack(spacing: 16) {
                 Text("SERIE").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                 stepButton(icon: "minus") {
-                    if exStates[i].sets > 1 {
-                        exStates[i].sets -= 1
-                        exStates[i].syncRepsArray()
-                    }
+                    if exStates[i].sets > 1 { exStates[i].sets -= 1; exStates[i].syncRepsArray() }
                 }
                 Text("\(exStates[i].sets)")
                     .font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(minWidth: 30)
                 stepButton(icon: "plus") {
-                    if exStates[i].sets < 10 {
-                        exStates[i].sets += 1
-                        exStates[i].syncRepsArray()
-                    }
+                    if exStates[i].sets < 10 { exStates[i].sets += 1; exStates[i].syncRepsArray() }
                 }
                 Spacer()
             }
@@ -194,7 +247,7 @@ struct AddSupersetView: View {
                 HStack {
                     Text("RIPETIZIONI").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     Spacer()
-                    Toggle("", isOn: $exStates[i].variableReps).labelsHidden().tint(.acidGreen)
+                    Toggle("", isOn: $exStates[i].variableReps).labelsHidden().tint(accent)
                         .onChange(of: exStates[i].variableReps) { on in
                             if on { exStates[i].repsPerSet = Array(repeating: exStates[i].uniformReps, count: exStates[i].sets) }
                         }
@@ -202,21 +255,19 @@ struct AddSupersetView: View {
                 }
                 if exStates[i].variableReps {
                     VStack(spacing: 6) {
-                        ForEach(0..<exStates[i].sets, id: \.self) { s in
+                        ForEach(exStates[i].repsPerSet.indices, id: \.self) { s in
                             HStack {
                                 Text("Serie \(s + 1)")
                                     .font(.system(size: 12)).foregroundColor(.gray)
                                     .frame(width: 56, alignment: .leading)
                                 Spacer()
                                 stepButton(icon: "minus") {
-                                    if s < exStates[i].repsPerSet.count, exStates[i].repsPerSet[s] > 1 {
-                                        exStates[i].repsPerSet[s] -= 1
-                                    }
+                                    if exStates[i].repsPerSet[s] > 1 { exStates[i].repsPerSet[s] -= 1 }
                                 }
-                                Text("\(s < exStates[i].repsPerSet.count ? exStates[i].repsPerSet[s] : 10)")
-                                    .font(.system(size: 15, weight: .bold)).foregroundColor(.acidGreen).frame(minWidth: 30)
+                                Text("\(exStates[i].repsPerSet[s])")
+                                    .font(.system(size: 15, weight: .bold)).foregroundColor(accent).frame(minWidth: 30)
                                 stepButton(icon: "plus") {
-                                    if s < exStates[i].repsPerSet.count { exStates[i].repsPerSet[s] += 1 }
+                                    exStates[i].repsPerSet[s] += 1
                                 }
                             }
                         }
@@ -238,8 +289,8 @@ struct AddSupersetView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: corner)
-                .fill(Color.acidGreen.opacity(0.04))
-                .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.acidGreen.opacity(0.15), lineWidth: 1))
+                .fill(accent.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: corner).stroke(accent.opacity(0.15), lineWidth: 1))
         )
     }
 
@@ -253,7 +304,7 @@ struct AddSupersetView: View {
     }
 
     private func label(_ text: String) -> some View {
-        Text(text).font(.caption).fontWeight(.bold).foregroundColor(.acidGreen).tracking(1)
+        Text(text).font(.caption).fontWeight(.bold).foregroundColor(accent).tracking(1)
     }
 
     private var fieldBg: some View {
@@ -268,8 +319,8 @@ struct AddSupersetView: View {
             action()
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .bold)).foregroundColor(.acidGreen)
-                .frame(width: 32, height: 32).background(Circle().fill(Color.acidGreen.opacity(0.15)))
+                .font(.system(size: 14, weight: .bold)).foregroundColor(accent)
+                .frame(width: 32, height: 32).background(Circle().fill(accent.opacity(0.15)))
         }
     }
 
@@ -282,7 +333,12 @@ struct AddSupersetView: View {
                 isBodyweight: false
             )
         }
-        let ss = WorkoutPlanSuperset(name: supersetName, exercises: exercises, restAfterSeconds: restSeconds)
+        let ss = WorkoutPlanSuperset(
+            name: supersetName,
+            exercises: exercises,
+            restAfterSeconds: restSeconds,
+            isCircuit: isCircuit
+        )
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             day.items.append(WorkoutPlanItem(kind: .superset, superset: ss))
         }

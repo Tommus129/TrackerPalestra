@@ -61,12 +61,34 @@ struct WorkoutPlanItem: Identifiable, Codable, Hashable {
 }
 
 // MARK: - WorkoutPlanSuperset
+// isCircuit = true → comportamento circuito (timer parte dopo l'ultimo esercizio del giro,
+// colore cyan nell'UI, label "CIRCUITO" invece di "SUPERSET")
 
 struct WorkoutPlanSuperset: Identifiable, Codable, Hashable {
     var id: String = UUID().uuidString
     var name: String = "Superset"
     var exercises: [WorkoutPlanExercise] = []
     var restAfterSeconds: Int = 60
+    var isCircuit: Bool = false
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, exercises, restAfterSeconds, isCircuit
+    }
+
+    init(id: String = UUID().uuidString, name: String = "Superset",
+         exercises: [WorkoutPlanExercise] = [], restAfterSeconds: Int = 60, isCircuit: Bool = false) {
+        self.id = id; self.name = name; self.exercises = exercises
+        self.restAfterSeconds = restAfterSeconds; self.isCircuit = isCircuit
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id               = try c.decodeIfPresent(String.self,              forKey: .id)               ?? UUID().uuidString
+        name             = try c.decodeIfPresent(String.self,              forKey: .name)             ?? "Superset"
+        exercises        = try c.decodeIfPresent([WorkoutPlanExercise].self, forKey: .exercises)      ?? []
+        restAfterSeconds = try c.decodeIfPresent(Int.self,                 forKey: .restAfterSeconds) ?? 60
+        isCircuit        = try c.decodeIfPresent(Bool.self,                forKey: .isCircuit)        ?? false
+    }
 }
 
 // MARK: - WorkoutPlanExercise
@@ -78,7 +100,6 @@ struct WorkoutPlanExercise: Identifiable, Codable, Hashable {
     var repsBySet: [Int]
     var isBodyweight: Bool
     var notes: String = ""
-    /// Recupero in secondi dopo ogni serie (default 60)
     var restAfterSeconds: Int = 60
 
     var repsDisplay: String { repsBySet.map { String($0) }.joined(separator: " ") }

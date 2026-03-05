@@ -25,20 +25,15 @@ struct WorkoutExerciseSession: Identifiable, Codable {
     var exerciseNotes: String
     var supersetGroupId: String? = nil
     var supersetName: String? = nil
+    // isCircuit: nil = esercizio normale / superset precedenti; false = superset; true = circuito
+    var isCircuit: Bool? = nil
 
-    // Stored come opzionale per retrocompatibilità Firestore:
-    // vecchi documenti senza il campo vengono decodificati come nil
-    // senza errori, invece di far saltare l'intera sessione.
     private var _restAfterSeconds: Int?
-
-    /// Recupero effettivo in secondi (default 60 se assente in Firestore).
     var restAfterSeconds: Int {
         get { _restAfterSeconds ?? 60 }
         set { _restAfterSeconds = newValue }
     }
 
-    // Init esplicito con label pubblica restAfterSeconds
-    // (evita che Swift generi il memberwise con _restAfterSeconds).
     init(
         id: String = UUID().uuidString,
         exerciseId: String,
@@ -49,6 +44,7 @@ struct WorkoutExerciseSession: Identifiable, Codable {
         exerciseNotes: String = "",
         supersetGroupId: String? = nil,
         supersetName: String? = nil,
+        isCircuit: Bool? = nil,
         restAfterSeconds: Int = 60
     ) {
         self.id = id
@@ -60,13 +56,13 @@ struct WorkoutExerciseSession: Identifiable, Codable {
         self.exerciseNotes = exerciseNotes
         self.supersetGroupId = supersetGroupId
         self.supersetName = supersetName
+        self.isCircuit = isCircuit
         self._restAfterSeconds = restAfterSeconds
     }
 
-    // MARK: Codable
     enum CodingKeys: String, CodingKey {
         case id, exerciseId, name, isBodyweight, sets, isPR, exerciseNotes
-        case supersetGroupId, supersetName
+        case supersetGroupId, supersetName, isCircuit
         case _restAfterSeconds = "restAfterSeconds"
     }
 }

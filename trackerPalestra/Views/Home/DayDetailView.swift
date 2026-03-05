@@ -83,10 +83,13 @@ struct DayDetailView: View {
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
 
                     Button { goToAddSuperset = true } label: {
-                        Label("AGGIUNGI SUPERSET", systemImage: "link")
-                            .font(.system(size: 15, weight: .bold)).tracking(0.8)
-                            .foregroundColor(.acidGreen).frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(RoundedRectangle(cornerRadius: corner).strokeBorder(Color.acidGreen, lineWidth: 1.5))
+                        HStack(spacing: 8) {
+                            Image(systemName: "link").font(.system(size: 13, weight: .bold))
+                            Text("AGGIUNGI SUPERSET / CIRCUITO")
+                                .font(.system(size: 15, weight: .bold)).tracking(0.8)
+                        }
+                        .foregroundColor(.acidGreen).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(RoundedRectangle(cornerRadius: corner).strokeBorder(Color.acidGreen, lineWidth: 1.5))
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
@@ -206,13 +209,25 @@ struct SupersetItemRow: View {
     let superset: WorkoutPlanSuperset
     let onTap: () -> Void
 
+    private var accent: Color { superset.isCircuit ? .cyan : .acidGreen }
+    private var icon: String  { superset.isCircuit ? "arrow.3.trianglepath" : "link" }
+    private var typeLabel: String { superset.isCircuit ? "CIRCUITO" : "SUPERSET" }
+
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label(superset.name, systemImage: "link")
+                    HStack(spacing: 5) {
+                        Image(systemName: icon).font(.system(size: 9, weight: .bold))
+                        Text(typeLabel).font(.system(size: 9, weight: .black)).tracking(1)
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(Capsule().fill(accent))
+
+                    Text(superset.name)
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.acidGreen)
+                        .foregroundColor(.white)
                     Spacer()
                     Text("Rec. \(superset.restAfterSeconds)\"")
                         .font(.caption).foregroundColor(.gray)
@@ -223,14 +238,16 @@ struct SupersetItemRow: View {
                 ForEach(superset.exercises.indices, id: \.self) { i in
                     let ex = superset.exercises[i]
                     HStack(spacing: 10) {
-                        Text("\(i + 1).")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.acidGreen.opacity(0.8)).frame(width: 18)
+                        Text(String(UnicodeScalar(65 + i)!))
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(accent)
+                            .frame(width: 20, height: 20)
+                            .background(Circle().fill(accent.opacity(0.15)))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(ex.name)
                                 .font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
                             Text("\(ex.sets) × \(ex.repsDisplay)")
-                                .font(.system(size: 13, weight: .bold)).foregroundColor(.acidGreen)
+                                .font(.system(size: 13, weight: .bold)).foregroundColor(accent)
                         }
                         Spacer()
                     }
@@ -239,8 +256,8 @@ struct SupersetItemRow: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.acidGreen.opacity(0.05))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.acidGreen.opacity(0.15), lineWidth: 1))
+                    .fill(accent.opacity(0.05))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(accent.opacity(0.15), lineWidth: 1))
             )
             .padding(.vertical, 4)
         }

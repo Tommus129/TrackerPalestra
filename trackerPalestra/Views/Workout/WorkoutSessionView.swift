@@ -5,12 +5,12 @@ import UniformTypeIdentifiers
 // MARK: - SessionItem
 private enum SessionItem: Identifiable {
     case single(indices: [Int])
-    case superset(indices: [Int], groupId: String, name: String)
+    case superset(indices: [Int], groupId: String, name: String, isCircuit: Bool)
 
     var id: String {
         switch self {
         case .single(let idx): return "s_\(idx[0])"
-        case .superset(_, let gid, _): return "ss_\(gid)"
+        case .superset(_, let gid, _, _): return "ss_\(gid)"
         }
     }
 }
@@ -29,8 +29,13 @@ struct WorkoutSessionView: View {
     @State private var showFullScreenTimer = false
     @State private var currentRestLabel: String = "RECUPERO"
 
-    // Colore accent superset — usato ovunque nella card
-    private let ssColor = Color.orange
+    // Traccia per ogni groupId quante serie sono state completate da ciascun esercizio
+    // nell'ultimo "giro". Struttura: [groupId: [exIdx: setCount]]
+    // Quando tutti gli esercizi del gruppo hanno lo stesso count → giro completato → timer.
+    @State private var supersetSetTracker: [String: [Int: Int]] = [:]
+
+    private let ssColor  = Color.orange
+    private let cirColor = Color.cyan
 
     init(session: WorkoutSession, onSave: @escaping (WorkoutSession) -> Void) {
         _localSession = State(initialValue: session)
@@ -49,7 +54,10 @@ struct WorkoutSessionView: View {
                       localSession.exercises[j].supersetGroupId == gid {
                     indices.append(j); j += 1
                 }
-                result.append(.superset(indices: indices, groupId: gid, name: ex.supersetName ?? "Superset"))
+                let isCircuit = ex.isCircuit ?? false
+                result.append(.superset(indices: indices, groupId: gid,
+                                        name: ex.supersetName ?? "Superset",
+                                        isCircuit: isCircuit))
                 i = j
             } else {
                 result.append(.single(indices: [i]))
@@ -95,8 +103,8 @@ struct WorkoutSessionView: View {
                                         startRest(seconds: seconds, label: localSession.exercises[idx].name)
                                     }
                                 )
-                            case .superset(let indices, _, let ssName):
-                                supersetCard(indices: indices, name: ssName)
+                            case .superset(let indices, let gid, let ssName, let isCircuit):
+                                supersetCard(indices: indices, groupId: gid, name: ssName, isCircuit: isCircuit)
                             }
                         }
 
@@ -173,47 +181,36 @@ struct WorkoutSessionView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showFullScreenTimer)
     }
 
-    // MARK: - Superset Card
-    //
-    // Layout:
-    //  ┌─ accent bar (4pt) ─────────────────────────────┐
-    //  │  [SS] NOME SUPERSET          [link] [rec. 90s]  │  ← header scuro
-    //  ├────────────────────────────────────────────────┤
-    //  │  ① A  ESERCIZIO 1                               │
-    //  │     <ExerciseCardView normale>                  │
-    //  │  ─── divisore sottile ──────────────────────── │
-    //  │  ② B  ESERCIZIO 2                               │
-    //  │     <ExerciseCardView normale>                  │
-    //  └────────────────────────────────────────────────┘
+    // MARK: - Superset / Circuit Card
 
     @ViewBuilder
-    private func supersetCard(indices: [Int], name: String) -> some View {
-        let restSec = localSession.exercises[indices[0]].restAfterSeconds
+    private func supersetCard(indices: [Int], groupId: String, name: String, isCircuit: Bool) -> some View {
+        let accent = isCircuit ? cirColor : ssColor
+        let chipLabel = isCircuit ? "CIRCUITO" : "SUPERSET"
+        let chipIcon  = isCircuit ? "arrow.3.trianglepath" : "link"
+        let restSec   = localSession.exercises[indices[0]].restAfterSeconds
 
         HStack(spacing: 0) {
-            // Accent bar laterale sinistra
             Rectangle()
-                .fill(ssColor)
+                .fill(accent)
                 .frame(width: 4)
                 .cornerRadius(2)
 
             VStack(alignment: .leading, spacing: 0) {
 
-                // ── Header ──────────────────────────────────────
+                // Header
                 HStack(spacing: 8) {
-                    // Chip "SUPERSET"
                     HStack(spacing: 5) {
-                        Image(systemName: "link")
+                        Image(systemName: chipIcon)
                             .font(.system(size: 10, weight: .black))
-                        Text("SUPERSET")
+                        Text(chipLabel)
                             .font(.system(size: 10, weight: .black))
                             .tracking(1)
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(Capsule().fill(ssColor))
+                    .background(Capsule().fill(accent))
 
-                    // Nome superset
                     Text(name.uppercased())
                         .font(.system(size: 14, weight: .black))
                         .foregroundColor(.white)
@@ -221,12 +218,9 @@ struct WorkoutSessionView: View {
 
                     Spacer()
 
-                    // Badge recupero
                     HStack(spacing: 3) {
-                        Image(systemName: "timer")
-                            .font(.system(size: 9, weight: .bold))
-                        Text(formatTime(restSec))
-                            .font(.system(size: 10, weight: .bold))
+                        Image(systemName: "timer").font(.system(size: 9, weight: .bold))
+                        Text(formatTime(restSec)).font(.system(size: 10, weight: .bold))
                     }
                     .foregroundColor(.white.opacity(0.55))
                     .padding(.horizontal, 8).padding(.vertical, 4)
@@ -234,35 +228,32 @@ struct WorkoutSessionView: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 12)
 
-                // Divisore header / corpo
                 Rectangle()
-                    .fill(ssColor.opacity(0.25))
+                    .fill(accent.opacity(0.25))
                     .frame(height: 1)
                     .padding(.horizontal, 14)
 
-                // ── Esercizi ────────────────────────────────────
+                // Esercizi
                 ForEach(Array(indices.enumerated()), id: \.element) { pos, idx in
                     VStack(spacing: 0) {
-                        // Etichetta A / B / C con nome
                         HStack(spacing: 8) {
                             Text(String(UnicodeScalar(65 + pos)!))
                                 .font(.system(size: 10, weight: .black))
-                                .foregroundColor(ssColor)
+                                .foregroundColor(accent)
                                 .frame(width: 20, height: 20)
-                                .background(Circle().fill(ssColor.opacity(0.15)))
+                                .background(Circle().fill(accent.opacity(0.15)))
 
                             Text(localSession.exercises[idx].name.uppercased())
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white.opacity(0.75))
                                 .lineLimit(1)
-
                             Spacer()
                         }
                         .padding(.horizontal, 14)
                         .padding(.top, 14)
                         .padding(.bottom, 4)
 
-                        // ExerciseCard standard (mantiene tutto lo stile normale)
+                        // ExerciseCard — onStartRest intercettato per timer smart
                         ExerciseCardView(
                             exercise: $localSession.exercises[idx],
                             onDelete: {
@@ -271,14 +262,19 @@ struct WorkoutSessionView: View {
                             },
                             restSeconds: restSec,
                             onStartRest: { seconds in
-                                startRest(seconds: seconds, label: name)
+                                handleSupersetSetCompleted(
+                                    groupId: groupId,
+                                    exIdx: idx,
+                                    allIndices: indices,
+                                    restSeconds: seconds,
+                                    label: name
+                                )
                             }
                         )
 
-                        // Divisore tra esercizi (non dopo l'ultimo)
                         if pos < indices.count - 1 {
                             Rectangle()
-                                .fill(ssColor.opacity(0.15))
+                                .fill(accent.opacity(0.15))
                                 .frame(height: 1)
                                 .padding(.horizontal, 14)
                                 .padding(.top, 6)
@@ -289,14 +285,50 @@ struct WorkoutSessionView: View {
                 Spacer(minLength: 16)
             }
         }
-        // Sfondo identico alle ExerciseCard normali + bordo destro sottile arancione
         .background(Color.cardGradient)
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(ssColor.opacity(0.3), lineWidth: 1)
+                .stroke(accent.opacity(0.3), lineWidth: 1)
         )
         .padding(.horizontal, 16)
+    }
+
+    // MARK: - Timer superset/circuito smart
+    //
+    // Il timer parte SOLO quando tutti gli esercizi del gruppo
+    // hanno completato lo stesso numero di giri (serie dello stesso round).
+    // Esempio con A+B: check A1 → niente; check B1 → timer.
+    //                  check A2 → niente; check B2 → timer.
+
+    private func handleSupersetSetCompleted(
+        groupId: String,
+        exIdx: Int,
+        allIndices: [Int],
+        restSeconds: Int,
+        label: String
+    ) {
+        // Conta le serie completate per questo esercizio
+        let completedCount = localSession.exercises[exIdx].sets.filter { $0.isCompleted }.count
+
+        // Aggiorna tracker
+        if supersetSetTracker[groupId] == nil {
+            supersetSetTracker[groupId] = [:]
+        }
+        supersetSetTracker[groupId]![exIdx] = completedCount
+
+        // Controlla se tutti gli esercizi hanno lo stesso numero di serie completate
+        let counts = allIndices.compactMap { supersetSetTracker[groupId]?[$0] }
+        guard counts.count == allIndices.count else { return }   // non tutti hanno ancora dati
+        guard let minCount = counts.min(), minCount > 0 else { return }
+        let allEqual = counts.allSatisfy { $0 == minCount }
+
+        if allEqual {
+            // Giro completato → avvia timer
+            startRest(seconds: restSeconds, label: label)
+            // Reset tracker per il prossimo giro
+            supersetSetTracker[groupId] = [:]
+        }
     }
 
     // MARK: - Rest

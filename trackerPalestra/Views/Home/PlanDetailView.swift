@@ -5,9 +5,17 @@ struct PlanDetailView: View {
     let plan: WorkoutPlan
     @State private var selectedDayId: String?
     @State private var activeSession: WorkoutSession?
+    @State private var showingEdit = false
 
     private var selectedDay: WorkoutPlanDay? {
-        plan.days.first { $0.id == selectedDayId }
+        // Legge sempre dalla versione aggiornata nei plans (dopo un salvataggio)
+        let currentPlan = viewModel.plans.first(where: { $0.id == plan.id }) ?? plan
+        return currentPlan.days.first { $0.id == selectedDayId }
+    }
+
+    /// Piano aggiornato (dopo modifiche)
+    private var currentPlan: WorkoutPlan {
+        viewModel.plans.first(where: { $0.id == plan.id }) ?? plan
     }
 
     var body: some View {
@@ -24,19 +32,17 @@ struct PlanDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
 
-                        // MARK: - Selezione Giorno
                         Text("SELEZIONA IL GIORNO")
                             .font(.system(size: 11, weight: .black))
                             .foregroundColor(.acidGreen)
                             .tracking(3)
                             .padding(.horizontal)
 
-                        ForEach(plan.days) { day in
+                        ForEach(currentPlan.days) { day in
                             dayButton(day: day)
                         }
                         .padding(.horizontal)
 
-                        // MARK: - Anteprima Esercizi
                         if let day = selectedDay {
                             exercisePreview(for: day)
                         }
@@ -45,11 +51,33 @@ struct PlanDetailView: View {
                     .padding(.bottom, 100)
                 }
 
-                // MARK: - Bottone Start
                 startButton
             }
         }
-        .navigationTitle(plan.name.uppercased())
+        .navigationTitle(currentPlan.name.uppercased())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    viewModel.prepareEditPlan(currentPlan)
+                    showingEdit = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.acidGreen)
+                }
+            }
+        }
+        .sheet(isPresented: $showingEdit, onDismiss: {
+            // Aggiorna selectedDayId se il giorno era stato eliminato
+            if let sid = selectedDayId,
+               !currentPlan.days.contains(where: { $0.id == sid }) {
+                selectedDayId = nil
+            }
+        }) {
+            WorkoutPlanEditView()
+                .environmentObject(viewModel)
+        }
         .sheet(item: $activeSession) { session in
             WorkoutSessionView(session: session) { saved in
                 viewModel.saveSession(saved) { _ in }
@@ -105,13 +133,9 @@ struct PlanDetailView: View {
             ForEach(day.resolvedItems) { item in
                 switch item.kind {
                 case .exercise:
-                    if let ex = item.exercise {
-                        exerciseRow(ex)
-                    }
+                    if let ex = item.exercise { exerciseRow(ex) }
                 case .superset:
-                    if let ss = item.superset {
-                        supersetRow(ss)
-                    }
+                    if let ss = item.superset { supersetRow(ss) }
                 }
             }
         }
@@ -124,7 +148,6 @@ struct PlanDetailView: View {
                 Text(exercise.name.uppercased())
                     .font(.system(size: 14, weight: .black))
                     .foregroundColor(.white)
-
                 HStack(spacing: 15) {
                     Label("\(exercise.sets) SERIE", systemImage: "square.3.layers.3d")
                     Label("\(exercise.repsDisplay) REPS", systemImage: "repeat")
@@ -135,13 +158,9 @@ struct PlanDetailView: View {
                 }
                 .font(.system(size: 10, weight: .bold))
                 .foregroundColor(.white.opacity(0.6))
-
                 if !exercise.notes.isEmpty {
-                    Text(exercise.notes)
-                        .font(.system(size: 10))
-                        .italic()
-                        .foregroundColor(.acidGreen.opacity(0.7))
-                        .padding(.top, 2)
+                    Text(exercise.notes).font(.system(size: 10)).italic()
+                        .foregroundColor(.acidGreen.opacity(0.7)).padding(.top, 2)
                 }
             }
             Spacer()
@@ -154,19 +173,41 @@ struct PlanDetailView: View {
     }
 
     private func supersetRow(_ ss: WorkoutPlanSuperset) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(ss.name.uppercased(), systemImage: "link")
-                .font(.system(size: 11, weight: .black))
-                .foregroundColor(.orange)
-                .tracking(1)
+        let accent: Color = ss.isCircuit ? .cyan : .orange
+        let icon = ss.isCircuit ? "arrow.3.trianglepath" : "link"
+        let typeLabel = ss.isCircuit ? "CIRCUITO" : "SUPERSET"
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: icon).font(.system(size: 9, weight: .bold))
+                    Text(typeLabel).font(.system(size: 9, weight: .black)).tracking(1)
+                }
+                .foregroundColor(.black)
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(Capsule().fill(accent))
+
+                Text(ss.name.uppercased())
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(accent)
+                    .tracking(1)
+                Spacer()
+                HStack(spacing: 3) {
+                    Image(systemName: "timer").font(.system(size: 9))
+                    Text("Rec. \(ss.restAfterSeconds)\"")
+                }
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.gray)
+            }
 
             ForEach(ss.exercises.indices, id: \.self) { i in
                 let ex = ss.exercises[i]
                 HStack(spacing: 10) {
-                    Text("\(i + 1).")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.orange.opacity(0.8))
-                        .frame(width: 18)
+                    Text(String(UnicodeScalar(65 + i)!))
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(accent)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(accent.opacity(0.15)))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(ex.name.uppercased())
                             .font(.system(size: 13, weight: .black))
@@ -181,24 +222,18 @@ struct PlanDetailView: View {
                     Spacer()
                 }
             }
-
-            HStack(spacing: 4) {
-                Image(systemName: "timer")
-                Text("Rec. \(ss.restAfterSeconds)\"")
-            }
-            .font(.system(size: 10, weight: .bold))
-            .foregroundColor(.gray)
         }
         .padding()
-        .background(Color.orange.opacity(0.04))
+        .background(accent.opacity(0.04))
         .cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.12), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(accent.opacity(0.12), lineWidth: 1))
         .padding(.horizontal)
     }
 
     private var startButton: some View {
         Button {
             if let day = selectedDay {
+                let plan = currentPlan
                 activeSession = viewModel.makeSession(plan: plan, day: day)
             }
         } label: {

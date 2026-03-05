@@ -109,6 +109,11 @@ final class MainViewModel: ObservableObject {
         )
     }
 
+    /// Carica una scheda esistente nell'editor.
+    func prepareEditPlan(_ plan: WorkoutPlan) {
+        editingPlan = plan
+    }
+
     func saveEditingPlan(completion: @escaping (Bool) -> Void) {
         guard var plan = editingPlan else { return }
         for i in plan.days.indices {
@@ -166,6 +171,7 @@ final class MainViewModel: ObservableObject {
                     exerciseNotes: ex.notes,
                     supersetGroupId: nil,
                     supersetName: nil,
+                    isCircuit: nil,
                     restAfterSeconds: ex.restAfterSeconds
                 ))
 
@@ -185,6 +191,7 @@ final class MainViewModel: ObservableObject {
                         exerciseNotes: ex.notes,
                         supersetGroupId: groupId,
                         supersetName: ss.name,
+                        isCircuit: ss.isCircuit,
                         restAfterSeconds: ss.restAfterSeconds
                     ))
                 }
