@@ -84,14 +84,18 @@ struct AddExerciseView: View {
                 stepButton(icon: "minus") {
                     if sets > 1 {
                         sets -= 1
-                        if variableReps && repsPerSet.count > sets { repsPerSet.removeLast() }
+                        if repsPerSet.count > sets {
+                            repsPerSet.removeLast()
+                        }
                     }
                 }
                 Text("\(sets)").font(.title2).fontWeight(.bold).foregroundColor(.white).frame(minWidth: 40)
                 stepButton(icon: "plus") {
                     if sets < 10 {
                         sets += 1
-                        if variableReps { repsPerSet.append(repsPerSet.last ?? 8) }
+                        if repsPerSet.count < sets {
+                            repsPerSet.append(repsPerSet.last ?? 8)
+                        }
                     }
                 }
                 Spacer()
@@ -110,9 +114,6 @@ struct AddExerciseView: View {
             }
             if variableReps {
                 VStack(spacing: 8) {
-                    // FIX: usa repsPerSet.indices invece di 0..<sets
-                    // così SwiftUI ricrea correttamente le righe quando
-                    // l'array cresce/diminuisce, evitando l'ultima serie bloccata.
                     ForEach(repsPerSet.indices, id: \.self) { i in
                         HStack {
                             Text("Serie \(i + 1)")
@@ -132,7 +133,15 @@ struct AddExerciseView: View {
                     }
                 }
                 .onChange(of: variableReps) { on in
-                    if on { repsPerSet = Array(repeating: uniformReps, count: sets) }
+                    if on {
+                        // Allinea la lunghezza dell'array a 'sets' mantenendo i vecchi valori, o usa uniformReps per i nuovi
+                        if repsPerSet.count < sets {
+                            let diff = sets - repsPerSet.count
+                            repsPerSet.append(contentsOf: Array(repeating: uniformReps, count: diff))
+                        } else if repsPerSet.count > sets {
+                            repsPerSet = Array(repsPerSet.prefix(sets))
+                        }
+                    }
                 }
             } else {
                 HStack(spacing: 16) {

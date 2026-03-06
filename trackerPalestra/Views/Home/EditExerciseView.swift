@@ -1,37 +1,20 @@
 import SwiftUI
 
-/// Modifica un esercizio già esistente in un giorno.
 struct EditExerciseView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
     @Binding var item: WorkoutPlanItem
 
-    @State private var name: String
-    @State private var notes: String
-    @State private var sets: Int
-    @State private var variableReps: Bool
-    @State private var uniformReps: Int
-    @State private var repsPerSet: [Int]
-    @State private var isBodyweight: Bool
-    @State private var restSeconds: Int
+    @State private var name = ""
+    @State private var notes = ""
+    @State private var sets = 3
+    @State private var variableReps = false
+    @State private var uniformReps = 8
+    @State private var repsPerSet: [Int] = Array(repeating: 8, count: 3)
+    @State private var isBodyweight = false
+    @State private var restSeconds = 60
 
     private let corner: CGFloat = 12
-
-    init(item: Binding<WorkoutPlanItem>) {
-        _item = item
-        let ex = item.wrappedValue.exercise ?? WorkoutPlanExercise(
-            name: "", sets: 3, repsBySet: [8], isBodyweight: false
-        )
-        _name         = State(initialValue: ex.name)
-        _notes        = State(initialValue: ex.notes)
-        _sets         = State(initialValue: ex.sets)
-        _isBodyweight = State(initialValue: ex.isBodyweight)
-        _restSeconds  = State(initialValue: ex.restAfterSeconds)
-        let isVariable = ex.repsBySet.count > 1
-        _variableReps = State(initialValue: isVariable)
-        _uniformReps  = State(initialValue: ex.repsBySet.first ?? 8)
-        _repsPerSet   = State(initialValue: isVariable ? ex.repsBySet : Array(repeating: ex.repsBySet.first ?? 8, count: ex.sets))
-    }
 
     var suggestions: [String] {
         guard !name.isEmpty else { return [] }
@@ -66,6 +49,25 @@ struct EditExerciseView: View {
                 Button("Annulla") { dismiss() }.foregroundColor(.white.opacity(0.6))
             }
         }
+        .onAppear(perform: loadData)
+    }
+
+    private func loadData() {
+        guard let ex = item.exercise else { return }
+        name = ex.name
+        notes = ex.notes
+        sets = ex.sets
+        isBodyweight = ex.isBodyweight
+        restSeconds = ex.restAfterSeconds
+
+        if ex.repsBySet.count > 1 {
+            variableReps = true
+            repsPerSet = ex.repsBySet
+        } else {
+            variableReps = false
+            uniformReps = ex.repsBySet.first ?? 8
+            repsPerSet = Array(repeating: uniformReps, count: sets)
+        }
     }
 
     // MARK: - Sections
@@ -80,7 +82,9 @@ struct EditExerciseView: View {
                     HStack(spacing: 8) {
                         ForEach(suggestions, id: \.self) { s in
                             Button { name = s } label: {
-                                Text(s).font(.subheadline).fontWeight(.medium).foregroundColor(.acidGreen)
+                                Text(s)
+                                    .font(.subheadline).fontWeight(.medium)
+                                    .foregroundColor(.acidGreen)
                                     .padding(.horizontal, 14).padding(.vertical, 8)
                                     .background(Capsule().fill(Color.acidGreen.opacity(0.1))
                                         .overlay(Capsule().strokeBorder(Color.acidGreen.opacity(0.3), lineWidth: 1)))
@@ -99,18 +103,23 @@ struct EditExerciseView: View {
                 stepButton(icon: "minus") {
                     if sets > 1 {
                         sets -= 1
-                        if variableReps && repsPerSet.count > sets { repsPerSet.removeLast() }
+                        if repsPerSet.count > sets {
+                            repsPerSet.removeLast()
+                        }
                     }
                 }
                 Text("\(sets)").font(.title2).fontWeight(.bold).foregroundColor(.white).frame(minWidth: 40)
                 stepButton(icon: "plus") {
                     if sets < 10 {
                         sets += 1
-                        if variableReps { repsPerSet.append(repsPerSet.last ?? 8) }
+                        if repsPerSet.count < sets {
+                            repsPerSet.append(repsPerSet.last ?? 8)
+                        }
                     }
                 }
                 Spacer()
-            }.padding(14).background(fieldBg)
+            }
+            .padding(14).background(fieldBg)
         }
     }
 
@@ -124,9 +133,6 @@ struct EditExerciseView: View {
             }
             if variableReps {
                 VStack(spacing: 8) {
-                    // FIX: usa repsPerSet.indices invece di 0..<sets
-                    // SwiftUI traccia le righe sull'array reale, non sul range
-                    // derivato da sets, eliminando il blocco dell'ultima serie.
                     ForEach(repsPerSet.indices, id: \.self) { i in
                         HStack {
                             Text("Serie \(i + 1)")
@@ -141,7 +147,18 @@ struct EditExerciseView: View {
                             stepButton(icon: "plus") {
                                 repsPerSet[i] += 1
                             }
-                        }.padding(.horizontal, 14).padding(.vertical, 10).background(fieldBg)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 10).background(fieldBg)
+                    }
+                }
+                .onChange(of: variableReps) { on in
+                    if on {
+                        if repsPerSet.count < sets {
+                            let diff = sets - repsPerSet.count
+                            repsPerSet.append(contentsOf: Array(repeating: uniformReps, count: diff))
+                        } else if repsPerSet.count > sets {
+                            repsPerSet = Array(repsPerSet.prefix(sets))
+                        }
                     }
                 }
             } else {
@@ -150,7 +167,8 @@ struct EditExerciseView: View {
                     Text("\(uniformReps)").font(.title2).fontWeight(.bold).foregroundColor(.white).frame(minWidth: 40)
                     stepButton(icon: "plus") { uniformReps += 1 }
                     Spacer()
-                }.padding(14).background(fieldBg)
+                }
+                .padding(14).background(fieldBg)
             }
         }
     }
@@ -161,7 +179,8 @@ struct EditExerciseView: View {
                 Image(systemName: isBodyweight ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20))
                     .foregroundColor(isBodyweight ? .acidGreen : .white.opacity(0.3))
-                Text("Corpo libero").font(.system(size: 15, weight: .medium)).foregroundColor(.white.opacity(0.85))
+                Text("Corpo libero")
+                    .font(.system(size: 15, weight: .medium)).foregroundColor(.white.opacity(0.85))
                 Spacer()
             }
             .padding(14)
@@ -180,12 +199,16 @@ struct EditExerciseView: View {
             HStack(spacing: 16) {
                 stepButton(icon: "minus") { if restSeconds >= 15 { restSeconds -= 15 } }
                 HStack(spacing: 4) {
-                    Text(formatRest(restSeconds)).font(.title2).fontWeight(.bold).foregroundColor(.white)
-                    Text(restSeconds >= 60 ? "min" : "sec").font(.caption).foregroundColor(.gray)
-                }.frame(minWidth: 70)
+                    Text(formatRest(restSeconds))
+                        .font(.title2).fontWeight(.bold).foregroundColor(.white)
+                    Text(restSeconds >= 60 ? "min" : "sec")
+                        .font(.caption).foregroundColor(.gray)
+                }
+                .frame(minWidth: 70)
                 stepButton(icon: "plus") { restSeconds += 15 }
                 Spacer()
-            }.padding(14).background(fieldBg)
+            }
+            .padding(14).background(fieldBg)
             HStack(spacing: 8) {
                 ForEach([30, 60, 90, 120, 180], id: \.self) { sec in
                     Button { restSeconds = sec } label: {
@@ -193,7 +216,9 @@ struct EditExerciseView: View {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(restSeconds == sec ? .black : .acidGreen)
                             .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(Capsule().fill(restSeconds == sec ? Color.acidGreen : Color.acidGreen.opacity(0.1)))
+                            .background(
+                                Capsule().fill(restSeconds == sec ? Color.acidGreen : Color.acidGreen.opacity(0.1))
+                            )
                     }
                 }
             }
@@ -213,32 +238,18 @@ struct EditExerciseView: View {
             Text("SALVA MODIFICHE")
                 .font(.system(size: 15, weight: .bold)).tracking(0.8)
                 .foregroundColor(name.trimmingCharacters(in: .whitespaces).isEmpty ? .gray.opacity(0.4) : .black)
-                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .background(RoundedRectangle(cornerRadius: corner)
-                    .fill(name.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray.opacity(0.2) : Color.acidGreen))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: corner)
+                        .fill(name.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray.opacity(0.2) : Color.acidGreen)
+                )
         }
         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         .padding(.top, 8)
     }
 
     // MARK: - Helpers
-
-    private func save() {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        let finalReps: [Int] = variableReps ? Array(repsPerSet.prefix(sets)) : [uniformReps]
-        item.exercise = WorkoutPlanExercise(
-            id: item.exercise?.id ?? UUID().uuidString,
-            name: viewModel.normalizeName(trimmed),
-            sets: sets,
-            repsBySet: finalReps,
-            isBodyweight: isBodyweight,
-            notes: notes,
-            restAfterSeconds: restSeconds
-        )
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        dismiss()
-    }
 
     private func formatRest(_ s: Int) -> String {
         if s < 60 { return "\(s)" }
@@ -261,8 +272,26 @@ struct EditExerciseView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            Image(systemName: icon).font(.system(size: 14, weight: .bold)).foregroundColor(.acidGreen)
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .bold)).foregroundColor(.acidGreen)
                 .frame(width: 36, height: 36).background(Circle().fill(Color.acidGreen.opacity(0.15)))
         }
+    }
+
+    private func save() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let finalReps: [Int] = variableReps ? Array(repsPerSet.prefix(sets)) : [uniformReps]
+        item.exercise = WorkoutPlanExercise(
+            id: item.exercise?.id ?? UUID().uuidString,
+            name: viewModel.normalizeName(trimmed),
+            sets: sets,
+            repsBySet: finalReps,
+            isBodyweight: isBodyweight,
+            notes: notes,
+            restAfterSeconds: restSeconds
+        )
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        dismiss()
     }
 }
