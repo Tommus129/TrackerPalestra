@@ -18,6 +18,10 @@ struct trackerPalestraApp: App {
                         .environmentObject(MainViewModel(userId: userId))
                         .environmentObject(authService)
                         .environmentObject(activeWorkoutManager)
+                        .onAppear {
+                            // Teniamo traccia dello user corrente per i salvataggi di emergenza
+                            activeWorkoutManager.currentUserId = userId
+                        }
                 } else {
                     LoginView(authService: authService)
                         .environmentObject(authService)
@@ -26,16 +30,9 @@ struct trackerPalestraApp: App {
             .preferredColorScheme(.dark)
         }
         .onChange(of: scenePhase) { newPhase in
-            if newPhase == .background || newPhase == .inactive {
-                // Esegue il salvataggio di emergenza a livello globale prima che l'app muoia
-                if let session = activeWorkoutManager.activeSession, let userId = authService.currentUserId {
-                    let hasInputs = session.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
-                    if hasInputs || !session.notes.isEmpty {
-                        // Creiamo un'istanza temporanea del ViewModel solo per salvare nei defaults (metodo sincrono e leggero)
-                        let tempViewModel = MainViewModel(userId: userId)
-                        tempViewModel.saveDraft(session)
-                    }
-                }
+            // Continuiamo a provare qui per sicurezza quando va in background normale
+            if newPhase == .background {
+                activeWorkoutManager.forceSaveDraft()
             }
         }
     }
@@ -46,6 +43,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         FirebaseApp.configure()
         return true
+    }
+    
+    // Questo è il metodo più aggressivo e sicuro che iOS ci mette a disposizione
+    // Viene chiamato proprio mentre l'app sta per essere killata / sospesa
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        ActiveWorkoutManager.shared.forceSaveDraft()
+    }
+    
+    // In alcuni casi (es. crash o swipe up brutale) viene chiamato questo
+    func applicationWillTerminate(_ application: UIApplication) {
+        ActiveWorkoutManager.shared.forceSaveDraft()
     }
     
     @available(iOS, deprecated: 26.0, message: "Use UIScene lifecycle instead")
