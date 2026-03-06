@@ -3,12 +3,12 @@ import SwiftUI
 // MARK: - Helpers locali
 private enum DetailItem: Identifiable {
     case single(WorkoutExerciseSession)
-    case superset(exercises: [WorkoutExerciseSession], groupId: String, name: String)
+    case superset(exercises: [WorkoutExerciseSession], groupId: String, name: String, isCircuit: Bool)
 
     var id: String {
         switch self {
         case .single(let ex): return "s_\(ex.id)"
-        case .superset(_, let gid, _): return "ss_\(gid)"
+        case .superset(_, let gid, _, _): return "ss_\(gid)"
         }
     }
 }
@@ -24,7 +24,10 @@ private func buildItems(from exercises: [WorkoutExerciseSession]) -> [DetailItem
             while j < exercises.count, exercises[j].supersetGroupId == gid {
                 group.append(exercises[j]); j += 1
             }
-            result.append(.superset(exercises: group, groupId: gid, name: ex.supersetName ?? "Superset"))
+            let isCircuit = ex.isCircuit ?? false
+            result.append(.superset(exercises: group, groupId: gid,
+                                    name: ex.supersetName ?? "Superset",
+                                    isCircuit: isCircuit))
             i = j
         } else {
             result.append(.single(ex))
@@ -38,7 +41,6 @@ private func buildItems(from exercises: [WorkoutExerciseSession]) -> [DetailItem
 
 struct WorkoutSessionDetailView: View {
     let session: WorkoutSession
-    private let ssColor = Color.orange
     private let corner: CGFloat = 16
 
     private var items: [DetailItem] { buildItems(from: session.exercises) }
@@ -67,8 +69,8 @@ struct WorkoutSessionDetailView: View {
                         switch item {
                         case .single(let ex):
                             exerciseCard(ex, accentColor: .acidGreen)
-                        case .superset(let exList, _, let name):
-                            supersetCard(exercises: exList, name: name)
+                        case .superset(let exList, _, let name, let isCircuit):
+                            supersetCard(exercises: exList, name: name, isCircuit: isCircuit)
                         }
                     }
 
@@ -202,23 +204,28 @@ struct WorkoutSessionDetailView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Superset Card
-    private func supersetCard(exercises: [WorkoutExerciseSession], name: String) -> some View {
-        HStack(spacing: 0) {
+    // MARK: - Superset / Circuit Card
+    private func supersetCard(exercises: [WorkoutExerciseSession], name: String, isCircuit: Bool) -> some View {
+        let accent: Color  = isCircuit ? .cyan : .orange
+        let chipLabel      = isCircuit ? "CIRCUITO" : "SUPERSET"
+        let chipIcon       = isCircuit ? "arrow.3.trianglepath" : "link"
+
+        return HStack(spacing: 0) {
             Rectangle()
-                .fill(ssColor)
+                .fill(accent)
                 .frame(width: 4)
                 .cornerRadius(2)
 
             VStack(alignment: .leading, spacing: 0) {
+                // Header
                 HStack(spacing: 8) {
                     HStack(spacing: 5) {
-                        Image(systemName: "link").font(.system(size: 10, weight: .black))
-                        Text("SUPERSET").font(.system(size: 10, weight: .black)).tracking(1)
+                        Image(systemName: chipIcon).font(.system(size: 10, weight: .black))
+                        Text(chipLabel).font(.system(size: 10, weight: .black)).tracking(1)
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(Capsule().fill(ssColor))
+                    .background(Capsule().fill(accent))
 
                     Text(name.uppercased())
                         .font(.system(size: 14, weight: .black))
@@ -234,7 +241,7 @@ struct WorkoutSessionDetailView: View {
                 .padding(.horizontal, 14).padding(.vertical, 12)
 
                 Rectangle()
-                    .fill(ssColor.opacity(0.25))
+                    .fill(accent.opacity(0.25))
                     .frame(height: 1)
                     .padding(.horizontal, 14)
 
@@ -243,9 +250,9 @@ struct WorkoutSessionDetailView: View {
                         HStack(spacing: 8) {
                             Text(String(UnicodeScalar(65 + pos)!))
                                 .font(.system(size: 10, weight: .black))
-                                .foregroundColor(ssColor)
+                                .foregroundColor(accent)
                                 .frame(width: 20, height: 20)
-                                .background(Circle().fill(ssColor.opacity(0.15)))
+                                .background(Circle().fill(accent.opacity(0.15)))
                             Text(ex.name.uppercased())
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white.opacity(0.75))
@@ -275,7 +282,7 @@ struct WorkoutSessionDetailView: View {
                                 HStack {
                                     Text("\(set.setIndex + 1)")
                                         .frame(width: 28, alignment: .leading)
-                                        .foregroundColor(ssColor.opacity(0.8))
+                                        .foregroundColor(accent.opacity(0.8))
                                     Text("\(set.reps)")
                                         .frame(width: 50, alignment: .center)
                                         .foregroundColor(.white)
@@ -287,20 +294,20 @@ struct WorkoutSessionDetailView: View {
                                     Spacer()
                                     Image(systemName: set.isCompleted ? "checkmark.circle.fill" : "circle")
                                         .font(.system(size: 14))
-                                        .foregroundColor(set.isCompleted ? ssColor : .white.opacity(0.15))
+                                        .foregroundColor(set.isCompleted ? accent : .white.opacity(0.15))
                                         .frame(width: 24)
                                 }
                                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                                 .padding(.horizontal, 18).padding(.vertical, 3)
                                 .background(RoundedRectangle(cornerRadius: 6)
-                                    .fill(set.isCompleted ? ssColor.opacity(0.06) : Color.clear))
+                                    .fill(set.isCompleted ? accent.opacity(0.06) : Color.clear))
                             }
                         }
                         .padding(.bottom, 10)
 
                         if !ex.exerciseNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             HStack(spacing: 6) {
-                                Rectangle().fill(ssColor.opacity(0.4)).frame(width: 2)
+                                Rectangle().fill(accent.opacity(0.4)).frame(width: 2)
                                 Text(ex.exerciseNotes)
                                     .font(.system(size: 12)).foregroundColor(.white.opacity(0.5)).italic()
                             }
@@ -309,7 +316,7 @@ struct WorkoutSessionDetailView: View {
 
                         if pos < exercises.count - 1 {
                             Rectangle()
-                                .fill(ssColor.opacity(0.15))
+                                .fill(accent.opacity(0.15))
                                 .frame(height: 1)
                                 .padding(.horizontal, 14)
                         }
@@ -320,7 +327,7 @@ struct WorkoutSessionDetailView: View {
             }
         }
         .background(RoundedRectangle(cornerRadius: corner).fill(Color.white.opacity(0.04)))
-        .overlay(RoundedRectangle(cornerRadius: corner).stroke(ssColor.opacity(0.3), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: corner).stroke(accent.opacity(0.3), lineWidth: 1))
         .cornerRadius(corner)
         .padding(.horizontal, 16)
     }

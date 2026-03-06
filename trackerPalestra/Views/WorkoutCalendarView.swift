@@ -3,12 +3,12 @@ import SwiftUI
 // MARK: - Raggruppamento sessione per calendario
 private enum CalendarItem: Identifiable {
     case single(WorkoutExerciseSession)
-    case superset(exercises: [WorkoutExerciseSession], name: String)
+    case superset(exercises: [WorkoutExerciseSession], name: String, isCircuit: Bool)
 
     var id: String {
         switch self {
         case .single(let ex): return "s_\(ex.id)"
-        case .superset(let exs, _): return "ss_\(exs[0].supersetGroupId ?? exs[0].id)"
+        case .superset(let exs, _, _): return "ss_\(exs[0].supersetGroupId ?? exs[0].id)"
         }
     }
 }
@@ -24,7 +24,8 @@ private func groupExercises(_ exercises: [WorkoutExerciseSession]) -> [CalendarI
             while j < exercises.count, exercises[j].supersetGroupId == gid {
                 group.append(exercises[j]); j += 1
             }
-            result.append(.superset(exercises: group, name: ex.supersetName ?? "Superset"))
+            let isCircuit = ex.isCircuit ?? false
+            result.append(.superset(exercises: group, name: ex.supersetName ?? "Superset", isCircuit: isCircuit))
             i = j
         } else {
             result.append(.single(ex))
@@ -40,6 +41,7 @@ struct WorkoutCalendarView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @State private var currentMonth: Date = Date()
     @State private var selectedDay: Date?
+    @State private var editingSession: WorkoutSession?
 
     var body: some View {
         ZStack {
@@ -112,17 +114,27 @@ struct WorkoutCalendarView: View {
                        !sessions.isEmpty {
                         List {
                             ForEach(sessions) { session in
-                                CalendarExerciseCard(session: session)
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                                    .padding(.vertical, 6)
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            if let id = session.id { viewModel.deleteSession(id: id) }
-                                        } label: {
-                                            Label("Elimina", systemImage: "trash")
-                                        }
+                                CalendarExerciseCard(session: session) {
+                                    editingSession = session
+                                }
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .padding(.vertical, 6)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        if let id = session.id { viewModel.deleteSession(id: id) }
+                                    } label: {
+                                        Label("Elimina", systemImage: "trash")
                                     }
+                                }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        editingSession = session
+                                    } label: {
+                                        Label("Modifica", systemImage: "pencil")
+                                    }
+                                    .tint(.acidGreen)
+                                }
                             }
                         }
                         .listStyle(.plain)
@@ -145,6 +157,13 @@ struct WorkoutCalendarView: View {
         .navigationTitle("DIARIO")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { viewModel.fetchWorkoutHistory() }
+        // Sheet modifica sessione
+        .sheet(item: $editingSession) { session in
+            WorkoutSessionView(session: session) { saved in
+                viewModel.updateSession(saved) { _ in }
+            }
+            .environmentObject(viewModel)
+        }
     }
 
     private func monthYearString(_ date: Date) -> String {
@@ -168,7 +187,10 @@ struct WorkoutCalendarView: View {
 struct CalendarExerciseCard: View {
     @EnvironmentObject var viewModel: MainViewModel
     let session: WorkoutSession
-    private let ssColor = Color.orange
+    var onEditTap: (() -> Void)? = nil
+
+    private let ssColor  = Color.orange
+    private let cirColor = Color.cyan
 
     private var planInfo: (title: String, day: String) {
         let plan = viewModel.plans.first(where: { $0.id == session.planId })
@@ -179,57 +201,72 @@ struct CalendarExerciseCard: View {
     private var items: [CalendarItem] { groupExercises(session.exercises) }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Accent bar verde (scheda intera)
-            Rectangle()
-                .fill(Color.acidGreen)
-                .frame(width: 4)
+        Button(action: { onEditTap?() }) {
+            HStack(spacing: 0) {
+                // Accent bar verde
+                Rectangle()
+                    .fill(Color.acidGreen)
+                    .frame(width: 4)
 
-            VStack(alignment: .leading, spacing: 15) {
-                // Header piano / giorno
-                HStack(spacing: 12) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "folder.fill").font(.system(size: 8))
-                        Text(planInfo.title).font(.system(size: 9, weight: .black))
+                VStack(alignment: .leading, spacing: 15) {
+                    // Header piano / giorno + bottone modifica
+                    HStack(spacing: 12) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "folder.fill").font(.system(size: 8))
+                            Text(planInfo.title).font(.system(size: 9, weight: .black))
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Color.acidGreen).foregroundColor(.customBlack).cornerRadius(4)
+
+                        Text(planInfo.day)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white.opacity(0.6))
+                        Spacer()
+
+                        // Bottone matita tap-friendly
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("MODIFICA")
+                                .font(.system(size: 8, weight: .black))
+                                .tracking(0.5)
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Capsule().fill(Color.acidGreen.opacity(0.85)))
                     }
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Color.acidGreen).foregroundColor(.customBlack).cornerRadius(4)
 
-                    Text(planInfo.day)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.white.opacity(0.6))
-                    Spacer()
-                }
+                    // Esercizi raggruppati
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(items) { item in
+                            switch item {
+                            case .single(let ex):
+                                singleExerciseRow(ex)
+                            case .superset(let exList, let name, let isCircuit):
+                                supersetBlock(exList, name: name, isCircuit: isCircuit)
+                            }
+                        }
+                    }
 
-                // Esercizi raggruppati
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(items) { item in
-                        switch item {
-                        case .single(let ex):
-                            singleExerciseRow(ex)
-                        case .superset(let exList, let name):
-                            supersetBlock(exList, name: name)
+                    // Note sessione
+                    if !session.notes.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Divider().background(Color.white.opacity(0.05))
+                            HStack {
+                                Image(systemName: "pencil.line").font(.system(size: 9))
+                                Text(session.notes).font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundColor(.white.opacity(0.4)).padding(.top, 4)
                         }
                     }
                 }
-
-                // Note sessione
-                if !session.notes.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Divider().background(Color.white.opacity(0.05))
-                        HStack {
-                            Image(systemName: "pencil.line").font(.system(size: 9))
-                            Text(session.notes).font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundColor(.white.opacity(0.4)).padding(.top, 4)
-                    }
-                }
+                .padding(15)
             }
-            .padding(15)
+            .background(Color.white.opacity(0.03))
+            .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.05), lineWidth: 1))
         }
-        .background(Color.white.opacity(0.03))
-        .cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .buttonStyle(.plain)
     }
 
     // MARK: - Riga esercizio normale
@@ -267,19 +304,23 @@ struct CalendarExerciseCard: View {
         }
     }
 
-    // MARK: - Blocco superset
+    // MARK: - Blocco superset / circuito
     @ViewBuilder
-    private func supersetBlock(_ exercises: [WorkoutExerciseSession], name: String) -> some View {
+    private func supersetBlock(_ exercises: [WorkoutExerciseSession], name: String, isCircuit: Bool) -> some View {
+        let accent = isCircuit ? cirColor : ssColor
+        let chipLabel = isCircuit ? "CIRCUITO" : "SUPERSET"
+        let chipIcon  = isCircuit ? "arrow.3.trianglepath" : "link"
+
         VStack(alignment: .leading, spacing: 0) {
-            // Header superset
+            // Header
             HStack(spacing: 8) {
                 HStack(spacing: 4) {
-                    Image(systemName: "link").font(.system(size: 8, weight: .black))
-                    Text("SUPERSET").font(.system(size: 8, weight: .black)).tracking(1)
+                    Image(systemName: chipIcon).font(.system(size: 8, weight: .black))
+                    Text(chipLabel).font(.system(size: 8, weight: .black)).tracking(1)
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, 7).padding(.vertical, 3)
-                .background(Capsule().fill(ssColor))
+                .background(Capsule().fill(accent))
 
                 Text(name.uppercased())
                     .font(.system(size: 11, weight: .black)).foregroundColor(.white)
@@ -288,23 +329,21 @@ struct CalendarExerciseCard: View {
             }
             .padding(.bottom, 8)
 
-            // Esercizi del blocco con accent bar arancione
+            // Esercizi con barra verticale colorata
             HStack(spacing: 0) {
-                // Barra verticale arancione
                 Rectangle()
-                    .fill(ssColor.opacity(0.5))
+                    .fill(accent.opacity(0.5))
                     .frame(width: 2)
                     .cornerRadius(1)
 
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(exercises.enumerated()), id: \.element.id) { pos, ex in
                         HStack(alignment: .top, spacing: 8) {
-                            // Label A / B / C
                             Text(String(UnicodeScalar(65 + pos)!))
                                 .font(.system(size: 9, weight: .black))
-                                .foregroundColor(ssColor)
+                                .foregroundColor(accent)
                                 .frame(width: 16, height: 16)
-                                .background(Circle().fill(ssColor.opacity(0.15)))
+                                .background(Circle().fill(accent.opacity(0.15)))
 
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 6) {
@@ -325,7 +364,7 @@ struct CalendarExerciseCard: View {
                                         Image(systemName: "note.text").font(.system(size: 7))
                                         Text(ex.exerciseNotes).font(.system(size: 9))
                                     }
-                                    .foregroundColor(ssColor.opacity(0.7))
+                                    .foregroundColor(accent.opacity(0.7))
                                 }
                             }
                         }
@@ -335,8 +374,8 @@ struct CalendarExerciseCard: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(ssColor.opacity(0.05)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(ssColor.opacity(0.25), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 10).fill(accent.opacity(0.05)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(accent.opacity(0.25), lineWidth: 1))
     }
 
     // MARK: - Helper

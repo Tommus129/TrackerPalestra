@@ -205,6 +205,7 @@ final class MainViewModel: ObservableObject {
         )
     }
 
+    /// Salva una nuova sessione su Firestore.
     func saveSession(_ session: WorkoutSession, completion: @escaping (Bool) -> Void) {
         var normalizedSession = session
         for i in normalizedSession.exercises.indices {
@@ -217,6 +218,34 @@ final class MainViewModel: ObservableObject {
                 self?.loadExerciseNames()
             }
             DispatchQueue.main.async { completion(success) }
+        }
+    }
+
+    /// Aggiorna una sessione già esistente su Firestore (sovrascrive il documento con lo stesso id).
+    func updateSession(_ session: WorkoutSession, completion: @escaping (Bool) -> Void) {
+        guard let sessionId = session.id, !sessionId.isEmpty else {
+            // Nessun id → salva come nuova
+            saveSession(session, completion: completion)
+            return
+        }
+        var normalizedSession = session
+        for i in normalizedSession.exercises.indices {
+            normalizedSession.exercises[i].name = normalizeName(normalizedSession.exercises[i].name)
+        }
+        // Firestore: merge false → sovrascrive il documento esistente
+        let db = Firestore.firestore()
+        do {
+            try db.collection("workoutSessions").document(sessionId).setData(from: normalizedSession) { [weak self] error in
+                let success = error == nil
+                if success {
+                    self?.fetchWorkoutHistory()
+                    normalizedSession.exercises.forEach { FirestoreService.shared.saveExerciseName($0.name) }
+                    self?.loadExerciseNames()
+                }
+                DispatchQueue.main.async { completion(success) }
+            }
+        } catch {
+            DispatchQueue.main.async { completion(false) }
         }
     }
 
