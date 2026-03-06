@@ -4,13 +4,13 @@ struct ExerciseCardView: View {
     @Binding var exercise: WorkoutExerciseSession
     @EnvironmentObject var viewModel: MainViewModel
     var onDelete: () -> Void
-    /// Recupero in secondi da avviare automaticamente al check dell'ultimo set.
     var restSeconds: Int = 60
-    /// Callback per avviare il timer nella parent view
     var onStartRest: ((Int) -> Void)? = nil
     
-    // Tema colore
     var accentColor: Color = .acidGreen
+    
+    /// Passato true quando l'esercizio fa parte di un Superset/Circuito (per nascondere il badge rest ripetuto)
+    var isInsideGroup: Bool = false
 
     private var lastMaxWeight: Double {
         viewModel.workoutHistory
@@ -30,7 +30,6 @@ struct ExerciseCardView: View {
 
     private var lastSessionNotes: String? { lastSessionData?.exerciseNotes }
 
-    // Toggle per mostrare/nascondere le note, rendendo la UI più pulita
     @State private var showNotes = false
 
     var body: some View {
@@ -41,9 +40,11 @@ struct ExerciseCardView: View {
             footerView
         }
         .background(Color.cardGradient)
+        // Se è in un gruppo il bordo laterale sinistro è piatto
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.05), lineWidth: 1.5))
         .contentShape(Rectangle())
+        .padding(.trailing, isInsideGroup ? 16 : 0) // per non sbordare a destra quando c'è la linea laterale a sinistra
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
@@ -82,7 +83,9 @@ struct ExerciseCardView: View {
             Spacer()
             
             HStack(spacing: 12) {
-                restBadge
+                if !isInsideGroup {
+                    restBadge
+                }
                 
                 Menu {
                     Button("Aggiungi Nota", systemImage: "note.text") {
@@ -166,7 +169,6 @@ struct ExerciseCardView: View {
         let isCompleted = exercise.sets[index].isCompleted
         
         HStack {
-            // Set Number
             Text("\(index + 1)")
                 .font(.system(size: 14, weight: .black, design: .monospaced))
                 .foregroundColor(isCompleted ? accentColor.opacity(0.5) : accentColor)
@@ -174,18 +176,15 @@ struct ExerciseCardView: View {
 
             Spacer()
 
-            // Reps Input
             repsTextField(for: index, isCompleted: isCompleted)
 
             if !exercise.isBodyweight {
                 Spacer()
-                // KG Input
                 weightTextField(for: index, isCompleted: isCompleted)
             }
 
             Spacer()
 
-            // Check Button
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                     exercise.sets[index].isCompleted.toggle()
@@ -292,7 +291,6 @@ struct ExerciseCardView: View {
         .padding(.vertical, 16)
     }
 
-    // Badge recupero
     @ViewBuilder
     private var restBadge: some View {
         HStack(spacing: 4) {

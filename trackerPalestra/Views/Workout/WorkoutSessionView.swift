@@ -64,7 +64,6 @@ struct WorkoutSessionView: View {
         return result
     }
 
-    // Variabile per calcolare il progresso totale della sessione
     private var workoutProgress: Double {
         let allSets = localSession.exercises.flatMap { $0.sets }
         if allSets.isEmpty { return 0.0 }
@@ -78,13 +77,12 @@ struct WorkoutSessionView: View {
                 .onTapGesture { hideKeyboard() }
 
             VStack(spacing: 0) {
-                // Header incollato in alto
                 compactHeaderView
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         
-                        // Data e Note raggruppate
+                        // Data e Note
                         VStack(spacing: 12) {
                             HStack {
                                 Image(systemName: "calendar")
@@ -142,7 +140,7 @@ struct WorkoutSessionView: View {
                                 )
                                 .padding(.horizontal, 16)
                             case .superset(let indices, let gid, let ssName, let isCircuit):
-                                supersetCard(indices: indices, groupId: gid, name: ssName, isCircuit: isCircuit)
+                                supersetGroupView(indices: indices, groupId: gid, name: ssName, isCircuit: isCircuit)
                             }
                         }
 
@@ -190,7 +188,6 @@ struct WorkoutSessionView: View {
                 .scrollDismissesKeyboard(.interactively)
             }
 
-            // Overlay Timer Full Screen
             if showFullScreenTimer {
                 fullScreenTimerView
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -218,68 +215,65 @@ struct WorkoutSessionView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showFullScreenTimer)
     }
 
-    // MARK: - Superset / Circuit Card
+    // MARK: - Superset / Circuit UI Rinnovata
 
     @ViewBuilder
-    private func supersetCard(indices: [Int], groupId: String, name: String, isCircuit: Bool) -> some View {
+    private func supersetGroupView(indices: [Int], groupId: String, name: String, isCircuit: Bool) -> some View {
         let accent = isCircuit ? cirColor : ssColor
         let chipLabel = isCircuit ? "CIRCUITO" : "SUPERSET"
         let chipIcon  = isCircuit ? "arrow.3.trianglepath" : "link"
         let restSec   = localSession.exercises[indices[0]].restAfterSeconds
 
-        VStack(spacing: 0) {
-            // Header
+        VStack(spacing: 16) {
+            // Pillola testata del gruppo pulita (centrale)
             HStack {
                 HStack(spacing: 6) {
-                    Image(systemName: chipIcon)
-                        .font(.system(size: 12, weight: .black))
-                    Text(chipLabel)
-                        .font(.system(size: 11, weight: .black))
-                        .tracking(1)
+                    Image(systemName: chipIcon).font(.system(size: 11, weight: .bold))
+                    Text(chipLabel).font(.system(size: 10, weight: .black)).tracking(1)
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(Capsule().fill(accent))
 
                 Text(name.uppercased())
-                    .font(.system(size: 15, weight: .black))
+                    .font(.system(size: 14, weight: .black))
                     .foregroundColor(.white)
                     .lineLimit(1)
                     .padding(.leading, 4)
 
                 Spacer()
-
+                
                 HStack(spacing: 4) {
                     Image(systemName: "timer").font(.system(size: 10, weight: .bold))
                     Text(formatTime(restSec)).font(.system(size: 11, weight: .bold))
                 }
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(accent.opacity(0.8))
                 .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(8)
+                .background(Capsule().stroke(accent.opacity(0.3), lineWidth: 1))
             }
-            .padding(16)
-            .background(Color.white.opacity(0.02))
+            .padding(.horizontal, 16)
 
-            // Esercizi (innestati in Vstack per evitare margini curvi interni)
-            VStack(spacing: 16) {
+            // Esercizi (nessuna box esterna ingombrante, usiamo le box base ma legate visivamente)
+            VStack(spacing: 12) {
                 ForEach(Array(indices.enumerated()), id: \.element) { pos, idx in
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 10) {
+                    HStack(spacing: 0) {
+                        // Connettore visivo laterale snello
+                        VStack(spacing: 0) {
+                            if pos > 0 { Rectangle().fill(accent.opacity(0.3)).frame(width: 2, height: 20) }
+                            else { Spacer().frame(height: 20) }
+                            
                             Text(String(UnicodeScalar(65 + pos)!))
-                                .font(.system(size: 12, weight: .black))
+                                .font(.system(size: 11, weight: .black))
                                 .foregroundColor(accent)
                                 .frame(width: 24, height: 24)
-                                .background(Circle().fill(accent.opacity(0.2)))
-
-                            Text("ESERCIZIO \(pos + 1)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white.opacity(0.4))
+                                .background(Circle().fill(accent.opacity(0.15)))
+                                .overlay(Circle().stroke(accent.opacity(0.5), lineWidth: 1))
+                            
+                            if pos < indices.count - 1 { Rectangle().fill(accent.opacity(0.3)).frame(width: 2) }
+                            else { Spacer() }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, -10) // Avvicina il badge all'esercizio
-                        .zIndex(1)
-
+                        .frame(width: 40)
+                        
                         ExerciseCardView(
                             exercise: $localSession.exercises[idx],
                             onDelete: {
@@ -296,17 +290,15 @@ struct WorkoutSessionView: View {
                                     label: name
                                 )
                             },
-                            accentColor: accent
+                            accentColor: accent,
+                            isInsideGroup: true
                         )
                     }
                 }
             }
-            .padding(.bottom, 16)
         }
-        .background(Color.cardGradient)
-        .cornerRadius(24)
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(accent.opacity(0.4), lineWidth: 1.5))
-        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     // MARK: - Timer logic
@@ -349,7 +341,6 @@ struct WorkoutSessionView: View {
     private var compactHeaderView: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center) {
-                // Progresso Allenamento
                 VStack(alignment: .leading, spacing: 4) {
                     Text("PROGRESSO")
                         .font(.system(size: 9, weight: .bold))
@@ -368,7 +359,6 @@ struct WorkoutSessionView: View {
 
                 Spacer()
 
-                // Timer pill attiva
                 Button {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         showFullScreenTimer = true
@@ -483,7 +473,6 @@ struct WorkoutSessionView: View {
         }
     }
 
-    // MARK: - Helpers
     private func formatTime(_ seconds: Int) -> String {
         let m = seconds / 60; let s = seconds % 60
         return m > 0 ? String(format: "%d:%02d", m, s) : "\(s)s"
