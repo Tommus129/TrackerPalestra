@@ -18,6 +18,7 @@ private enum SessionItem: Identifiable {
 
 struct WorkoutSessionView: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var activeWorkoutManager: ActiveWorkoutManager
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) var scenePhase
     
@@ -164,6 +165,7 @@ struct WorkoutSessionView: View {
                             }
                             
                             Button {
+                                activeWorkoutManager.clear()
                                 viewModel.clearDraft() // Pulisce la bozza siccome salviamo
                                 onSave(localSession)
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -203,6 +205,10 @@ struct WorkoutSessionView: View {
         .onAppear { 
             viewModel.loadExerciseNames()
             requestNotificationPermission()
+            activeWorkoutManager.register(localSession)
+        }
+        .onDisappear {
+            activeWorkoutManager.clear()
         }
         .sheet(isPresented: $showingExtraSheet) {
             ExtraExerciseSheet(allNames: viewModel.exerciseNames) { name in
@@ -210,9 +216,10 @@ struct WorkoutSessionView: View {
                 showingExtraSheet = false
             }
         }
-        // Auto-salvataggio della bozza in locale
+        // Auto-salvataggio della bozza in locale continuo e sync col manager globale
         .onChange(of: localSession) { newValue in
-            // Ha inserito dei pesi o completato delle serie?
+            activeWorkoutManager.register(newValue)
+            
             let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
             if hasInputs || !newValue.notes.isEmpty {
                 viewModel.saveDraft(newValue)
@@ -220,7 +227,7 @@ struct WorkoutSessionView: View {
                 viewModel.clearDraft()
             }
         }
-        // Quando l'app va in background o swipe up
+        // Quando l'app torna in foreground gestiamo il timer
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active && isTimerRunning {
                 if let endDate = timerEndDate {
@@ -231,12 +238,6 @@ struct WorkoutSessionView: View {
                         remainingSeconds = 0
                         finishTimer()
                     }
-                }
-            } else if newPhase == .background || newPhase == .inactive {
-                // Intercetta l'uscita o la chiusura forzata dell'app
-                let hasInputs = localSession.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
-                if hasInputs || !localSession.notes.isEmpty {
-                    viewModel.saveDraft(localSession)
                 }
             }
         }
