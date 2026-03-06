@@ -3,7 +3,7 @@ import FirebaseFirestore
 
 // MARK: - WorkoutSet
 
-struct WorkoutSet: Identifiable, Codable {
+struct WorkoutSet: Identifiable, Codable, Equatable {
     var id: String = UUID().uuidString
     var setIndex: Int
     var reps: Int
@@ -15,7 +15,7 @@ struct WorkoutSet: Identifiable, Codable {
 
 // MARK: - WorkoutExerciseSession
 
-struct WorkoutExerciseSession: Identifiable, Codable {
+struct WorkoutExerciseSession: Identifiable, Codable, Equatable {
     var id: String = UUID().uuidString
     var exerciseId: String
     var name: String
@@ -69,7 +69,7 @@ struct WorkoutExerciseSession: Identifiable, Codable {
 
 // MARK: - WorkoutSession
 
-struct WorkoutSession: Identifiable, Codable {
+struct WorkoutSession: Identifiable, Codable, Equatable {
     @DocumentID var id: String?
     var userId: String
     var planId: String
