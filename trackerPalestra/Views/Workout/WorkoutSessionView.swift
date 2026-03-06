@@ -29,9 +29,6 @@ struct WorkoutSessionView: View {
     @State private var showFullScreenTimer = false
     @State private var currentRestLabel: String = "RECUPERO"
 
-    // Traccia per ogni groupId quante serie sono state completate da ciascun esercizio
-    // nell'ultimo "giro". Struttura: [groupId: [exIdx: setCount]]
-    // Quando tutti gli esercizi del gruppo hanno lo stesso count → giro completato → timer.
     @State private var supersetSetTracker: [String: [Int: Int]] = [:]
 
     private let ssColor  = Color.orange
@@ -67,27 +64,67 @@ struct WorkoutSessionView: View {
         return result
     }
 
+    // Variabile per calcolare il progresso totale della sessione
+    private var workoutProgress: Double {
+        let allSets = localSession.exercises.flatMap { $0.sets }
+        if allSets.isEmpty { return 0.0 }
+        let completed = allSets.filter { $0.isCompleted }.count
+        return Double(completed) / Double(allSets.count)
+    }
+
     var body: some View {
         ZStack {
             Color.customBlack.ignoresSafeArea()
                 .onTapGesture { hideKeyboard() }
 
             VStack(spacing: 0) {
+                // Header incollato in alto
                 compactHeaderView
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        // Data
-                        HStack {
-                            Image(systemName: "calendar")
-                            DatePicker("", selection: $localSession.date, displayedComponents: .date)
-                                .labelsHidden()
+                    VStack(spacing: 24) {
+                        
+                        // Data e Note raggruppate
+                        VStack(spacing: 12) {
+                            HStack {
+                                Image(systemName: "calendar")
+                                    .foregroundColor(.acidGreen)
+                                DatePicker("", selection: $localSession.date, displayedComponents: .date)
+                                    .labelsHidden()
+                                    .colorScheme(.dark)
+                                Spacer()
+                            }
+                            
+                            Divider().background(Color.white.opacity(0.1))
+                            
+                            HStack(alignment: .top) {
+                                Image(systemName: "pencil.line")
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .padding(.top, 8)
+                                TextEditor(text: $localSession.notes)
+                                    .frame(height: 50)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                    .scrollContentBackground(.hidden)
+                                    .background(Color.clear)
+                                    .overlay(
+                                        Text("Aggiungi note generali...")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(Color.white.opacity(0.3))
+                                            .padding(.top, 8)
+                                            .padding(.leading, 4)
+                                            .opacity(localSession.notes.isEmpty ? 1 : 0)
+                                        , alignment: .topLeading
+                                    )
+                            }
                         }
-                        .padding(.horizontal, 15).padding(.vertical, 8)
-                        .background(Capsule().fill(Color.white.opacity(0.05)))
-                        .padding(.top, 20)
+                        .padding(16)
+                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.03)))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
 
-                        // Items
+                        // Lista Esercizi
                         ForEach(sessionItems) { item in
                             switch item {
                             case .single(let indices):
@@ -103,57 +140,57 @@ struct WorkoutSessionView: View {
                                         startRest(seconds: seconds, label: localSession.exercises[idx].name)
                                     }
                                 )
+                                .padding(.horizontal, 16)
                             case .superset(let indices, let gid, let ssName, let isCircuit):
                                 supersetCard(indices: indices, groupId: gid, name: ssName, isCircuit: isCircuit)
                             }
                         }
 
-                        // Note generali
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("NOTE GENERALI ALLENAMENTO")
-                                .font(.system(size: 10, weight: .black)).foregroundColor(.acidGreen).tracking(2)
-                            TextEditor(text: $localSession.notes)
-                                .frame(height: 100).font(.system(size: 14)).foregroundColor(.white)
-                                .padding(8)
-                                .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.deepPurple.opacity(0.3), lineWidth: 1))
-                                .scrollContentBackground(.hidden)
-                        }
-                        .padding(.horizontal, 16)
-
-                        // Bottoni
-                        VStack(spacing: 15) {
+                        // Bottoni Aggiungi / Completa
+                        VStack(spacing: 16) {
                             Button { hideKeyboard(); showingExtraSheet = true } label: {
                                 HStack {
-                                    Image(systemName: "plus.circle.fill").font(.system(size: 16))
-                                    Text("AGGIUNGI ESERCIZIO").font(.system(size: 12, weight: .bold))
+                                    Image(systemName: "plus")
+                                    Text("AGGIUNGI ESERCIZIO EXTRA")
                                 }
-                                .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                .background(RoundedRectangle(cornerRadius: 12).stroke(Color.acidGreen.opacity(0.3), lineWidth: 2))
-                                .foregroundColor(.acidGreen)
+                                .font(.system(size: 14, weight: .bold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 2, dash: [6])))
+                                .foregroundColor(.white.opacity(0.7))
                             }
+                            
                             Button {
                                 onSave(localSession)
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 dismiss()
                             } label: {
                                 HStack {
-                                    Image(systemName: "checkmark.circle.fill").font(.system(size: 18))
-                                    Text("COMPLETA ALLENAMENTO").font(.system(size: 13, weight: .black))
+                                    Text("COMPLETA ALLENAMENTO")
+                                        .font(.system(size: 15, weight: .black))
+                                        .tracking(1)
+                                    Spacer()
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 20))
                                 }
-                                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                                .background(RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.acidGreen)
-                                    .shadow(color: Color.acidGreen.opacity(0.3), radius: 8, y: 4))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 20)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color.acidGreen)
+                                        .shadow(color: Color.acidGreen.opacity(0.3), radius: 10, y: 5)
+                                )
                                 .foregroundColor(.black)
                             }
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 30)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 30)
                     }
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
 
+            // Overlay Timer Full Screen
             if showFullScreenTimer {
                 fullScreenTimerView
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -190,70 +227,59 @@ struct WorkoutSessionView: View {
         let chipIcon  = isCircuit ? "arrow.3.trianglepath" : "link"
         let restSec   = localSession.exercises[indices[0]].restAfterSeconds
 
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(accent)
-                .frame(width: 4)
-                .cornerRadius(2)
-
-            VStack(alignment: .leading, spacing: 0) {
-
-                // Header
-                HStack(spacing: 8) {
-                    HStack(spacing: 5) {
-                        Image(systemName: chipIcon)
-                            .font(.system(size: 10, weight: .black))
-                        Text(chipLabel)
-                            .font(.system(size: 10, weight: .black))
-                            .tracking(1)
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(Capsule().fill(accent))
-
-                    Text(name.uppercased())
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    HStack(spacing: 3) {
-                        Image(systemName: "timer").font(.system(size: 9, weight: .bold))
-                        Text(formatTime(restSec)).font(.system(size: 10, weight: .bold))
-                    }
-                    .foregroundColor(.white.opacity(0.55))
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.07)))
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: chipIcon)
+                        .font(.system(size: 12, weight: .black))
+                    Text(chipLabel)
+                        .font(.system(size: 11, weight: .black))
+                        .tracking(1)
                 }
-                .padding(.horizontal, 14).padding(.vertical, 12)
+                .foregroundColor(.black)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Capsule().fill(accent))
 
-                Rectangle()
-                    .fill(accent.opacity(0.25))
-                    .frame(height: 1)
-                    .padding(.horizontal, 14)
+                Text(name.uppercased())
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .padding(.leading, 4)
 
-                // Esercizi
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Image(systemName: "timer").font(.system(size: 10, weight: .bold))
+                    Text(formatTime(restSec)).font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.white.opacity(0.8))
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(8)
+            }
+            .padding(16)
+            .background(Color.white.opacity(0.02))
+
+            // Esercizi (innestati in Vstack per evitare margini curvi interni)
+            VStack(spacing: 16) {
                 ForEach(Array(indices.enumerated()), id: \.element) { pos, idx in
-                    VStack(spacing: 0) {
-                        HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 10) {
                             Text(String(UnicodeScalar(65 + pos)!))
-                                .font(.system(size: 10, weight: .black))
+                                .font(.system(size: 12, weight: .black))
                                 .foregroundColor(accent)
-                                .frame(width: 20, height: 20)
-                                .background(Circle().fill(accent.opacity(0.15)))
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(accent.opacity(0.2)))
 
-                            Text(localSession.exercises[idx].name.uppercased())
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white.opacity(0.75))
-                                .lineLimit(1)
-                            Spacer()
+                            Text("ESERCIZIO \(pos + 1)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white.opacity(0.4))
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.top, 14)
-                        .padding(.bottom, 4)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, -10) // Avvicina il badge all'esercizio
+                        .zIndex(1)
 
-                        // ExerciseCard — onStartRest intercettato per timer smart
                         ExerciseCardView(
                             exercise: $localSession.exercises[idx],
                             onDelete: {
@@ -269,37 +295,21 @@ struct WorkoutSessionView: View {
                                     restSeconds: seconds,
                                     label: name
                                 )
-                            }
+                            },
+                            accentColor: accent
                         )
-
-                        if pos < indices.count - 1 {
-                            Rectangle()
-                                .fill(accent.opacity(0.15))
-                                .frame(height: 1)
-                                .padding(.horizontal, 14)
-                                .padding(.top, 6)
-                        }
                     }
                 }
-
-                Spacer(minLength: 16)
             }
+            .padding(.bottom, 16)
         }
         .background(Color.cardGradient)
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(accent.opacity(0.3), lineWidth: 1)
-        )
+        .cornerRadius(24)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(accent.opacity(0.4), lineWidth: 1.5))
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Timer superset/circuito smart
-    //
-    // Il timer parte SOLO quando tutti gli esercizi del gruppo
-    // hanno completato lo stesso numero di giri (serie dello stesso round).
-    // Esempio con A+B: check A1 → niente; check B1 → timer.
-    //                  check A2 → niente; check B2 → timer.
+    // MARK: - Timer logic
 
     private func handleSupersetSetCompleted(
         groupId: String,
@@ -308,30 +318,24 @@ struct WorkoutSessionView: View {
         restSeconds: Int,
         label: String
     ) {
-        // Conta le serie completate per questo esercizio
         let completedCount = localSession.exercises[exIdx].sets.filter { $0.isCompleted }.count
 
-        // Aggiorna tracker
         if supersetSetTracker[groupId] == nil {
             supersetSetTracker[groupId] = [:]
         }
         supersetSetTracker[groupId]![exIdx] = completedCount
 
-        // Controlla se tutti gli esercizi hanno lo stesso numero di serie completate
         let counts = allIndices.compactMap { supersetSetTracker[groupId]?[$0] }
-        guard counts.count == allIndices.count else { return }   // non tutti hanno ancora dati
+        guard counts.count == allIndices.count else { return }
         guard let minCount = counts.min(), minCount > 0 else { return }
         let allEqual = counts.allSatisfy { $0 == minCount }
 
         if allEqual {
-            // Giro completato → avvia timer
             startRest(seconds: restSeconds, label: label)
-            // Reset tracker per il prossimo giro
             supersetSetTracker[groupId] = [:]
         }
     }
 
-    // MARK: - Rest
     private func startRest(seconds: Int, label: String) {
         timerValuePreset = seconds
         remainingSeconds = seconds
@@ -343,33 +347,67 @@ struct WorkoutSessionView: View {
 
     // MARK: - Header
     private var compactHeaderView: some View {
-        HStack {
-            Button {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    showFullScreenTimer = true
-                    if !isTimerRunning { remainingSeconds = timerValuePreset }
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "timer").font(.system(size: 16))
-                    if isTimerRunning {
-                        Text(formatTime(remainingSeconds))
-                            .font(.system(size: 13, weight: .black, design: .monospaced))
-                    } else {
-                        Text("RECUPERO").font(.system(size: 11, weight: .bold))
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                // Progresso Allenamento
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PROGRESSO")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.5))
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.white.opacity(0.1))
+                            Capsule()
+                                .fill(Color.acidGreen)
+                                .frame(width: geo.size.width * CGFloat(workoutProgress))
+                                .animation(.spring(), value: workoutProgress)
+                        }
                     }
+                    .frame(width: 80, height: 6)
                 }
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(Capsule().fill(isTimerRunning ? Color.acidGreen : Color.deepPurple))
-                .foregroundColor(isTimerRunning ? .black : .acidGreen)
+
+                Spacer()
+
+                // Timer pill attiva
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        showFullScreenTimer = true
+                        if !isTimerRunning { remainingSeconds = timerValuePreset }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 14, weight: .semibold))
+                        if isTimerRunning {
+                            Text(formatTime(remainingSeconds))
+                                .font(.system(size: 14, weight: .black, design: .monospaced))
+                                .contentTransition(.numericText())
+                        } else {
+                            Text("TIMER")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(isTimerRunning ? Color.acidGreen : Color.white.opacity(0.1)))
+                    .foregroundColor(isTimerRunning ? .black : .acidGreen)
+                    .shadow(color: isTimerRunning ? Color.acidGreen.opacity(0.4) : .clear, radius: 8)
+                }
+
+                Spacer()
+
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.white.opacity(0.3))
+                }
             }
-            Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill").font(.title2).foregroundColor(.white.opacity(0.3))
-            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            
+            Divider().background(Color.white.opacity(0.1))
         }
-        .padding(.horizontal, 20).padding(.vertical, 16)
-        .background(Color.white.opacity(0.02))
+        .background(Color.customBlack.opacity(0.95))
     }
 
     // MARK: - Full Screen Timer
@@ -379,26 +417,26 @@ struct WorkoutSessionView: View {
             VStack(spacing: 40) {
                 Spacer()
                 Text(currentRestLabel)
-                    .font(.system(size: 13, weight: .bold)).foregroundColor(.white.opacity(0.5)).tracking(2)
+                    .font(.system(size: 14, weight: .bold)).foregroundColor(.white.opacity(0.5)).tracking(3)
                 ZStack {
-                    Circle().stroke(Color.deepPurple.opacity(0.2), lineWidth: 16)
+                    Circle().stroke(Color.white.opacity(0.05), lineWidth: 20)
                     Circle()
                         .trim(from: 0, to: CGFloat(remainingSeconds) / CGFloat(max(timerValuePreset, 1)))
-                        .stroke(Color.acidGreen, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                        .stroke(Color.acidGreen, style: StrokeStyle(lineWidth: 20, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .shadow(color: Color.acidGreen.opacity(0.6), radius: 12)
+                        .shadow(color: Color.acidGreen.opacity(0.5), radius: 15)
                         .animation(.linear(duration: 1), value: remainingSeconds)
                     VStack(spacing: 8) {
                         Text(formatTime(remainingSeconds))
-                            .font(.system(size: 72, weight: .black, design: .rounded)).foregroundColor(.white)
+                            .font(.system(size: 80, weight: .black, design: .rounded)).foregroundColor(.white)
                         Text(remainingSeconds == 0 ? "COMPLETATO!" : "RECUPERO")
-                            .font(.system(size: 14, weight: .semibold)).foregroundColor(.acidGreen).tracking(2)
+                            .font(.system(size: 16, weight: .black)).foregroundColor(.acidGreen).tracking(2)
                     }
                 }
-                .frame(width: 280, height: 280)
+                .frame(width: 300, height: 300)
                 Spacer()
-                VStack(spacing: 20) {
-                    HStack(spacing: 12) {
+                VStack(spacing: 30) {
+                    HStack(spacing: 16) {
                         ForEach([30, 60, 90, 120], id: \.self) { seconds in
                             Button {
                                 timerValuePreset = seconds
@@ -407,15 +445,15 @@ struct WorkoutSessionView: View {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
                                 Text("\(seconds)s")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundColor(timerValuePreset == seconds ? .black : .acidGreen)
-                                    .frame(width: 70, height: 44)
-                                    .background(RoundedRectangle(cornerRadius: 10)
-                                        .fill(timerValuePreset == seconds ? Color.acidGreen : Color.deepPurple.opacity(0.3)))
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(timerValuePreset == seconds ? .black : .white)
+                                    .frame(width: 65, height: 44)
+                                    .background(RoundedRectangle(cornerRadius: 12)
+                                        .fill(timerValuePreset == seconds ? Color.acidGreen : Color.white.opacity(0.1)))
                             }
                         }
                     }
-                    HStack(spacing: 15) {
+                    HStack(spacing: 20) {
                         Button {
                             isTimerRunning = false; remainingSeconds = timerValuePreset
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -428,19 +466,19 @@ struct WorkoutSessionView: View {
                             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                         } label: {
                             Image(systemName: isTimerRunning ? "pause.fill" : "play.fill")
-                                .font(.system(size: 32, weight: .bold)).foregroundColor(.black)
+                                .font(.system(size: 32, weight: .black)).foregroundColor(.black)
                                 .frame(width: 90, height: 90)
-                                .background(Circle().fill(Color.acidGreen).shadow(color: Color.acidGreen.opacity(0.5), radius: 16, y: 8))
+                                .background(Circle().fill(Color.acidGreen).shadow(color: Color.acidGreen.opacity(0.4), radius: 16, y: 8))
                         }
                         Button {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
                         } label: {
-                            Image(systemName: "xmark").font(.system(size: 20, weight: .bold)).foregroundColor(.white.opacity(0.6))
+                            Image(systemName: "chevron.down").font(.system(size: 20, weight: .bold)).foregroundColor(.white)
                                 .frame(width: 70, height: 70).background(Circle().fill(Color.white.opacity(0.1)))
                         }
                     }
                 }
-                .padding(.bottom, 50)
+                .padding(.bottom, 60)
             }
         }
     }
@@ -463,30 +501,5 @@ struct WorkoutSessionView: View {
 
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-}
-
-// MARK: - Drop Delegate
-struct ExerciseDropDelegate: DropDelegate {
-    @Binding var exercises: [WorkoutExerciseSession]
-    let draggedIndex: Int
-    func performDrop(info: DropInfo) -> Bool { true }
-    func dropEntered(info: DropInfo) {
-        guard let itemProvider = info.itemProviders(for: [UTType.text]).first else { return }
-        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (item, error) in
-            guard let data = item as? Data,
-                  let sourceIndexString = String(data: data, encoding: .utf8),
-                  let sourceIndex = Int(sourceIndexString),
-                  sourceIndex != draggedIndex else { return }
-            DispatchQueue.main.async {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    let sourceExercise = exercises[sourceIndex]
-                    exercises.remove(at: sourceIndex)
-                    let destinationIndex = sourceIndex < draggedIndex ? draggedIndex - 1 : draggedIndex
-                    exercises.insert(sourceExercise, at: destinationIndex)
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                }
-            }
-        }
     }
 }
