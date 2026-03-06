@@ -212,14 +212,15 @@ struct WorkoutSessionView: View {
         }
         // Auto-salvataggio della bozza in locale
         .onChange(of: localSession) { newValue in
-            let completedSets = newValue.exercises.flatMap { $0.sets }.filter { $0.isCompleted }.count
-            if completedSets > 0 || !newValue.notes.isEmpty {
+            // Ha inserito dei pesi o completato delle serie?
+            let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
+            if hasInputs || !newValue.notes.isEmpty {
                 viewModel.saveDraft(newValue)
             } else {
                 viewModel.clearDraft()
             }
         }
-        // Ricalcola il timer quando l'app torna in foreground
+        // Quando l'app va in background o swipe up
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active && isTimerRunning {
                 if let endDate = timerEndDate {
@@ -230,6 +231,12 @@ struct WorkoutSessionView: View {
                         remainingSeconds = 0
                         finishTimer()
                     }
+                }
+            } else if newPhase == .background || newPhase == .inactive {
+                // Intercetta l'uscita o la chiusura forzata dell'app
+                let hasInputs = localSession.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
+                if hasInputs || !localSession.notes.isEmpty {
+                    viewModel.saveDraft(localSession)
                 }
             }
         }
