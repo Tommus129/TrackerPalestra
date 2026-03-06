@@ -10,12 +10,14 @@ final class MainViewModel: ObservableObject {
     @Published var userId: String?
     @Published var exerciseNames: [String] = []
     @Published var editingPlan: WorkoutPlan?
+    @Published var activeDraft: WorkoutSession? = nil
 
     init(userId: String) {
         self.userId = userId
         loadPlans()
         loadExerciseNames()
         fetchWorkoutHistory()
+        loadDraft()
     }
 
     // MARK: - Utility
@@ -109,7 +111,6 @@ final class MainViewModel: ObservableObject {
         )
     }
 
-    /// Carica una scheda esistente nell'editor.
     func prepareEditPlan(_ plan: WorkoutPlan) {
         editingPlan = plan
     }
@@ -148,6 +149,27 @@ final class MainViewModel: ObservableObject {
             }
             DispatchQueue.main.async { completion(success) }
         }
+    }
+
+    // MARK: - Bozza Allenamento
+    
+    func loadDraft() {
+        if let data = UserDefaults.standard.data(forKey: "workoutDraft"),
+           let draft = try? JSONDecoder().decode(WorkoutSession.self, from: data) {
+            self.activeDraft = draft
+        }
+    }
+
+    func saveDraft(_ session: WorkoutSession) {
+        if let data = try? JSONEncoder().encode(session) {
+            UserDefaults.standard.set(data, forKey: "workoutDraft")
+        }
+        self.activeDraft = session
+    }
+
+    func clearDraft() {
+        UserDefaults.standard.removeObject(forKey: "workoutDraft")
+        self.activeDraft = nil
     }
 
     // MARK: - Sessioni
@@ -205,7 +227,6 @@ final class MainViewModel: ObservableObject {
         )
     }
 
-    /// Salva una nuova sessione su Firestore.
     func saveSession(_ session: WorkoutSession, completion: @escaping (Bool) -> Void) {
         var normalizedSession = session
         for i in normalizedSession.exercises.indices {
@@ -221,10 +242,8 @@ final class MainViewModel: ObservableObject {
         }
     }
 
-    /// Aggiorna una sessione già esistente su Firestore (sovrascrive il documento con lo stesso id).
     func updateSession(_ session: WorkoutSession, completion: @escaping (Bool) -> Void) {
         guard let sessionId = session.id, !sessionId.isEmpty else {
-            // Nessun id → salva come nuova
             saveSession(session, completion: completion)
             return
         }
@@ -232,7 +251,6 @@ final class MainViewModel: ObservableObject {
         for i in normalizedSession.exercises.indices {
             normalizedSession.exercises[i].name = normalizeName(normalizedSession.exercises[i].name)
         }
-        // Firestore: merge false → sovrascrive il documento esistente
         let db = Firestore.firestore()
         do {
             try db.collection("workoutSessions").document(sessionId).setData(from: normalizedSession) { [weak self] error in
@@ -272,8 +290,6 @@ final class MainViewModel: ObservableObject {
         return nil
     }
 }
-
-// MARK: - Computed Properties
 
 extension MainViewModel {
     var sessionsByDay: [Date: [WorkoutSession]] {

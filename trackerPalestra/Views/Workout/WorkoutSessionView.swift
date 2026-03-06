@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import UniformTypeIdentifiers
+import UserNotifications
 
 // MARK: - SessionItem
 private enum SessionItem: Identifiable {
@@ -18,13 +19,17 @@ private enum SessionItem: Identifiable {
 struct WorkoutSessionView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.scenePhase) var scenePhase
+    
     @State private var localSession: WorkoutSession
     var onSave: (WorkoutSession) -> Void
 
     @State private var remainingSeconds: Int = 60
     @State private var isTimerRunning: Bool = false
     @State private var timerValuePreset: Int = 60
+    @State private var timerEndDate: Date? = nil
     @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
     @State private var showingExtraSheet = false
     @State private var showFullScreenTimer = false
     @State private var currentRestLabel: String = "RECUPERO"
@@ -159,6 +164,7 @@ struct WorkoutSessionView: View {
                             }
                             
                             Button {
+                                viewModel.clearDraft() // Pulisce la bozza siccome salviamo
                                 onSave(localSession)
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 dismiss()
@@ -194,29 +200,54 @@ struct WorkoutSessionView: View {
                     .zIndex(999)
             }
         }
-        .onAppear { viewModel.loadExerciseNames() }
+        .onAppear { 
+            viewModel.loadExerciseNames()
+            requestNotificationPermission()
+        }
         .sheet(isPresented: $showingExtraSheet) {
             ExtraExerciseSheet(allNames: viewModel.exerciseNames) { name in
                 addExtraExercise(named: name)
                 showingExtraSheet = false
             }
         }
-        .onReceive(timer) { _ in
-            guard isTimerRunning, remainingSeconds > 0 else { return }
-            remainingSeconds -= 1
-            if remainingSeconds == 0 {
-                isTimerRunning = false
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
+        // Auto-salvataggio della bozza in locale
+        .onChange(of: localSession) { newValue in
+            let completedSets = newValue.exercises.flatMap { $0.sets }.filter { $0.isCompleted }.count
+            if completedSets > 0 || !newValue.notes.isEmpty {
+                viewModel.saveDraft(newValue)
+            } else {
+                viewModel.clearDraft()
+            }
+        }
+        // Ricalcola il timer quando l'app torna in foreground
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active && isTimerRunning {
+                if let endDate = timerEndDate {
+                    let diff = Int(endDate.timeIntervalSince(Date()))
+                    if diff > 0 {
+                        remainingSeconds = diff
+                    } else {
+                        remainingSeconds = 0
+                        finishTimer()
+                    }
                 }
+            }
+        }
+        .onReceive(timer) { _ in
+            guard isTimerRunning, let endDate = timerEndDate else { return }
+            let diff = Int(endDate.timeIntervalSince(Date()))
+            
+            if diff > 0 {
+                remainingSeconds = diff
+            } else {
+                remainingSeconds = 0
+                finishTimer()
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showFullScreenTimer)
     }
 
-    // MARK: - Superset / Circuit UI Rinnovata
-
+    // MARK: - Superset / Circuit UI
     @ViewBuilder
     private func supersetGroupView(indices: [Int], groupId: String, name: String, isCircuit: Bool) -> some View {
         let accent = isCircuit ? cirColor : ssColor
@@ -225,7 +256,6 @@ struct WorkoutSessionView: View {
         let restSec   = localSession.exercises[indices[0]].restAfterSeconds
 
         VStack(spacing: 16) {
-            // Pillola testata del gruppo pulita (centrale)
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: chipIcon).font(.system(size: 11, weight: .bold))
@@ -253,11 +283,9 @@ struct WorkoutSessionView: View {
             }
             .padding(.horizontal, 16)
 
-            // Esercizi (nessuna box esterna ingombrante, usiamo le box base ma legate visivamente)
             VStack(spacing: 12) {
                 ForEach(Array(indices.enumerated()), id: \.element) { pos, idx in
                     HStack(spacing: 0) {
-                        // Connettore visivo laterale snello
                         VStack(spacing: 0) {
                             if pos > 0 { Rectangle().fill(accent.opacity(0.3)).frame(width: 2, height: 20) }
                             else { Spacer().frame(height: 20) }
@@ -303,18 +331,9 @@ struct WorkoutSessionView: View {
 
     // MARK: - Timer logic
 
-    private func handleSupersetSetCompleted(
-        groupId: String,
-        exIdx: Int,
-        allIndices: [Int],
-        restSeconds: Int,
-        label: String
-    ) {
+    private func handleSupersetSetCompleted(groupId: String, exIdx: Int, allIndices: [Int], restSeconds: Int, label: String) {
         let completedCount = localSession.exercises[exIdx].sets.filter { $0.isCompleted }.count
-
-        if supersetSetTracker[groupId] == nil {
-            supersetSetTracker[groupId] = [:]
-        }
+        if supersetSetTracker[groupId] == nil { supersetSetTracker[groupId] = [:] }
         supersetSetTracker[groupId]![exIdx] = completedCount
 
         let counts = allIndices.compactMap { supersetSetTracker[groupId]?[$0] }
@@ -331,10 +350,48 @@ struct WorkoutSessionView: View {
     private func startRest(seconds: Int, label: String) {
         timerValuePreset = seconds
         remainingSeconds = seconds
+        timerEndDate = Date().addingTimeInterval(TimeInterval(seconds))
         isTimerRunning = true
         currentRestLabel = label.uppercased()
+        
+        scheduleNotification(seconds: seconds, label: label)
+        
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = true }
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+    }
+    
+    private func finishTimer() {
+        isTimerRunning = false
+        timerEndDate = nil
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
+        }
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    private func scheduleNotification(seconds: Int, label: String) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Recupero Terminato!"
+            content.body = "È ora di ricominciare con \(label)."
+            content.sound = UNNotificationSound.default
+            
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(seconds), repeats: false)
+            let request = UNNotificationRequest(identifier: "restTimer", content: content, trigger: trigger)
+            
+            center.removePendingNotificationRequests(withIdentifiers: ["restTimer"])
+            center.add(request)
+        }
+    }
+    
+    private func cancelNotification() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["restTimer"])
     }
 
     // MARK: - Header
@@ -432,6 +489,8 @@ struct WorkoutSessionView: View {
                                 timerValuePreset = seconds
                                 remainingSeconds = seconds
                                 isTimerRunning = false
+                                timerEndDate = nil
+                                cancelNotification()
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
                                 Text("\(seconds)s")
@@ -445,14 +504,27 @@ struct WorkoutSessionView: View {
                     }
                     HStack(spacing: 20) {
                         Button {
-                            isTimerRunning = false; remainingSeconds = timerValuePreset
+                            isTimerRunning = false
+                            remainingSeconds = timerValuePreset
+                            timerEndDate = nil
+                            cancelNotification()
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         } label: {
                             Image(systemName: "arrow.counterclockwise").font(.system(size: 20, weight: .bold)).foregroundColor(.white)
                                 .frame(width: 70, height: 70).background(Circle().fill(Color.white.opacity(0.1)))
                         }
                         Button {
-                            isTimerRunning.toggle()
+                            if isTimerRunning {
+                                isTimerRunning = false
+                                cancelNotification()
+                                let diff = Int(timerEndDate?.timeIntervalSince(Date()) ?? 0)
+                                remainingSeconds = max(0, diff)
+                                timerEndDate = nil
+                            } else {
+                                isTimerRunning = true
+                                timerEndDate = Date().addingTimeInterval(TimeInterval(remainingSeconds))
+                                scheduleNotification(seconds: remainingSeconds, label: currentRestLabel)
+                            }
                             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                         } label: {
                             Image(systemName: isTimerRunning ? "pause.fill" : "play.fill")

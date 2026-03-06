@@ -6,6 +6,10 @@ struct PlanDetailView: View {
     @State private var selectedDayId: String?
     @State private var activeSession: WorkoutSession?
     @State private var showingEdit = false
+    
+    // Gestione Draft (Bozza)
+    @State private var showingDraftAlert = false
+    @State private var pendingNewSession: WorkoutSession? = nil
 
     private var selectedDay: WorkoutPlanDay? {
         // Legge sempre dalla versione aggiornata nei plans (dopo un salvataggio)
@@ -69,7 +73,6 @@ struct PlanDetailView: View {
             }
         }
         .sheet(isPresented: $showingEdit, onDismiss: {
-            // Aggiorna selectedDayId se il giorno era stato eliminato
             if let sid = selectedDayId,
                !currentPlan.days.contains(where: { $0.id == sid }) {
                 selectedDayId = nil
@@ -83,6 +86,20 @@ struct PlanDetailView: View {
                 viewModel.saveSession(saved) { _ in }
             }
             .environmentObject(viewModel)
+        }
+        .alert("Allenamento in sospeso", isPresented: $showingDraftAlert) {
+            Button("Riprendi bozza") {
+                if let draft = viewModel.activeDraft {
+                    activeSession = draft
+                }
+            }
+            Button("Scarta e inizia nuovo", role: .destructive) {
+                viewModel.clearDraft()
+                activeSession = pendingNewSession
+            }
+            Button("Annulla", role: .cancel) { }
+        } message: {
+            Text("Hai un allenamento precedentemente iniziato e non completato. Cosa vuoi fare?")
         }
     }
 
@@ -234,7 +251,14 @@ struct PlanDetailView: View {
         Button {
             if let day = selectedDay {
                 let plan = currentPlan
-                activeSession = viewModel.makeSession(plan: plan, day: day)
+                let newSession = viewModel.makeSession(plan: plan, day: day)
+                
+                if viewModel.activeDraft != nil {
+                    self.pendingNewSession = newSession
+                    self.showingDraftAlert = true
+                } else {
+                    activeSession = newSession
+                }
             }
         } label: {
             HStack {
