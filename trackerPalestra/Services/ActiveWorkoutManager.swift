@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // Un EnvironmentObject o un singleton globale per tenere traccia
 // della sessione attiva in modo che il ciclo di vita dell'App possa salvarla
