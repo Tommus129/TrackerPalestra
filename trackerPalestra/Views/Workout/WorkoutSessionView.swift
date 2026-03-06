@@ -216,13 +216,15 @@ struct WorkoutSessionView: View {
                 showingExtraSheet = false
             }
         }
-        // Auto-salvataggio della bozza in locale continuo e sync col manager globale
+        // Auto-salvataggio della bozza in locale continuo: 
+        // Salva FISICAMENTE nel disco su ogni singola modifica, così lo swipe-up non ha più importanza!
         .onChange(of: localSession) { newValue in
-            activeWorkoutManager.register(newValue)
+            activeWorkoutManager.register(newValue) // sync per l'app delegate se dovesse servire
             
+            // Appena modifichi un valore qualsiasi, salvo nel disco la bozza in tempo reale.
             let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
             if hasInputs || !newValue.notes.isEmpty {
-                viewModel.saveDraft(newValue)
+                viewModel.saveDraft(newValue) // Scrive su UserDefaults al volo
             } else {
                 viewModel.clearDraft()
             }
