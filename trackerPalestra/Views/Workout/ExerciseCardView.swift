@@ -164,7 +164,6 @@ struct ExerciseCardView: View {
     @ViewBuilder
     private func setRowView(for index: Int) -> some View {
         let isCompleted = exercise.sets[index].isCompleted
-        let ghostSet = (lastSessionData?.sets.indices.contains(index) ?? false) ? lastSessionData?.sets[index] : nil
         
         HStack {
             // Set Number
@@ -176,34 +175,12 @@ struct ExerciseCardView: View {
             Spacer()
 
             // Reps Input
-            TextField(ghostSet != nil ? "\(ghostSet!.reps)" : "0",
-                      value: Binding(
-                        get: { exercise.sets[index].reps == 0 ? nil : Double(exercise.sets[index].reps) },
-                        set: { exercise.sets[index].reps = Int($0 ?? 0) }
-                      ), format: .number)
-                .keyboardType(.numberPad)
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
-                .foregroundColor(isCompleted ? .white.opacity(0.5) : .white)
-                .multilineTextAlignment(.center)
-                .frame(width: 70, height: 40)
-                .background(RoundedRectangle(cornerRadius: 8).fill(isCompleted ? Color.clear : Color.white.opacity(0.05)))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(isCompleted ? Color.clear : Color.white.opacity(0.1), lineWidth: 1))
+            repsTextField(for: index, isCompleted: isCompleted)
 
             if !exercise.isBodyweight {
                 Spacer()
                 // KG Input
-                TextField(ghostSet != nil ? "\(ghostSet!.weight, specifier: "%.1f")" : "0.0",
-                          value: Binding(
-                            get: { exercise.sets[index].weight == 0 ? nil : exercise.sets[index].weight },
-                            set: { exercise.sets[index].weight = $0 ?? 0 }
-                          ), format: .number)
-                    .keyboardType(.decimalPad)
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
-                    .foregroundColor(isCompleted ? .white.opacity(0.5) : .white)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 80, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(isCompleted ? Color.clear : Color.white.opacity(0.05)))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(isCompleted ? Color.clear : Color.white.opacity(0.1), lineWidth: 1))
+                weightTextField(for: index, isCompleted: isCompleted)
             }
 
             Spacer()
@@ -240,6 +217,46 @@ struct ExerciseCardView: View {
         .background(isCompleted ? accentColor.opacity(0.03) : Color.clear)
     }
 
+    @ViewBuilder
+    private func repsTextField(for index: Int, isCompleted: Bool) -> some View {
+        let hasGhost = lastSessionData?.sets.indices.contains(index) ?? false
+        let ghostVal = hasGhost ? lastSessionData!.sets[index].reps : 0
+        let ph = hasGhost ? "\(ghostVal)" : "0"
+
+        TextField(ph,
+                  value: Binding(
+                    get: { exercise.sets[index].reps == 0 ? nil : Double(exercise.sets[index].reps) },
+                    set: { exercise.sets[index].reps = Int($0 ?? 0) }
+                  ), format: .number)
+            .keyboardType(.numberPad)
+            .font(.system(size: 18, weight: .bold, design: .monospaced))
+            .foregroundColor(isCompleted ? .white.opacity(0.5) : .white)
+            .multilineTextAlignment(.center)
+            .frame(width: 70, height: 40)
+            .background(RoundedRectangle(cornerRadius: 8).fill(isCompleted ? Color.clear : Color.white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(isCompleted ? Color.clear : Color.white.opacity(0.1), lineWidth: 1))
+    }
+
+    @ViewBuilder
+    private func weightTextField(for index: Int, isCompleted: Bool) -> some View {
+        let hasGhost = lastSessionData?.sets.indices.contains(index) ?? false
+        let ghostVal = hasGhost ? lastSessionData!.sets[index].weight : 0.0
+        let ph = hasGhost ? "\(String(format: "%.1f", ghostVal))" : "0.0"
+
+        TextField(ph,
+                  value: Binding(
+                    get: { exercise.sets[index].weight == 0 ? nil : exercise.sets[index].weight },
+                    set: { exercise.sets[index].weight = $0 ?? 0 }
+                  ), format: .number)
+            .keyboardType(.decimalPad)
+            .font(.system(size: 18, weight: .bold, design: .monospaced))
+            .foregroundColor(isCompleted ? .white.opacity(0.5) : .white)
+            .multilineTextAlignment(.center)
+            .frame(width: 80, height: 40)
+            .background(RoundedRectangle(cornerRadius: 8).fill(isCompleted ? Color.clear : Color.white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(isCompleted ? Color.clear : Color.white.opacity(0.1), lineWidth: 1))
+    }
+
     private var footerView: some View {
         HStack {
             Button(action: addSet) {
@@ -258,7 +275,9 @@ struct ExerciseCardView: View {
             
             if exercise.sets.count > 1 {
                 Button(action: { 
-                    withAnimation { exercise.sets.removeLast() }
+                    withAnimation { 
+                        _ = exercise.sets.popLast() 
+                    }
                 }) {
                     Text("RIMUOVI SET")
                         .font(.system(size: 11, weight: .bold))
