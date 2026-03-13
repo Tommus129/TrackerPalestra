@@ -6,35 +6,51 @@ struct HomeView: View {
     @State private var editMode: EditMode = .inactive
     @State private var showingProfile = false
 
-
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.customBlack.ignoresSafeArea()
-                
+
                 Circle()
                     .fill(Color.deepPurple.opacity(0.15))
                     .frame(width: 400)
                     .blur(radius: 80)
                     .offset(x: -150, y: -200)
-                
+
                 VStack(spacing: 0) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 10) {
-                            // Header con tasto Modifica
+                    // Unica List che gestisce tutto lo scroll — niente ScrollView annidata
+                    List {
+                        // Header schede
+                        Section {
+                            if viewModel.plans.isEmpty {
+                                emptyStateView
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            } else {
+                                ForEach(viewModel.plans) { plan in
+                                    NavigationLink(destination: PlanDetailView(plan: plan).environmentObject(viewModel)) {
+                                        PlanHomeCard(plan: plan)
+                                    }
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                                    .buttonStyle(CyberButtonStyle())
+                                }
+                                .onDelete(perform: viewModel.deletePlan)
+                                .onMove(perform: viewModel.movePlan)
+                            }
+                        } header: {
                             HStack {
                                 Text("LE TUE SCHEDE")
                                     .font(.system(size: 12, weight: .black))
                                     .foregroundColor(.acidGreen)
                                     .tracking(3)
-                                
                                 Spacer()
-                                
-                                Button(action: {
+                                Button {
                                     withAnimation {
                                         editMode = (editMode == .active) ? .inactive : .active
                                     }
-                                }) {
+                                } label: {
                                     Text(editMode == .active ? "FATTO" : "MODIFICA")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundColor(.acidGreen)
@@ -43,63 +59,45 @@ struct HomeView: View {
                                         .cornerRadius(4)
                                 }
                             }
-                            .padding(.horizontal)
-                            .padding(.top, 20)
-                            
-                            if viewModel.plans.isEmpty {
-                                emptyStateView
-                            } else {
-                                // List stilizzata per permettere onMove e onDelete correttamente
-                                List {
-                                    ForEach(viewModel.plans) { plan in
-                                        NavigationLink(destination: PlanDetailView(plan: plan).environmentObject(viewModel)) {
-                                            PlanHomeCard(plan: plan)
-                                        }
-                                        .listRowBackground(Color.clear)
-                                        .listRowSeparator(.hidden)
-                                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                                        .buttonStyle(CyberButtonStyle())
-                                    }
-                                    .onDelete(perform: viewModel.deletePlan)
-                                    .onMove(perform: viewModel.movePlan)
-                                }
-                                .listStyle(.plain)
-                                .environment(\.editMode, $editMode)
-                                // Altezza dinamica basata sul numero di schede per non bloccare lo scroll della ScrollView esterna
-                                .frame(height: CGFloat(viewModel.plans.count) * 105 + 20)
-                                .scrollDisabled(true)
+                            .padding(.top, 8)
+                        }
+
+                        // Strumenti
+                        Section {
+                            NavigationLink(destination: WorkoutCalendarView().environmentObject(viewModel)) {
+                                ToolRow(icon: "calendar", title: "CALENDARIO ALLENAMENTI")
                             }
-                            
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .buttonStyle(CyberButtonStyle())
+
+                            NavigationLink(destination: ExerciseHistoryListView().environmentObject(viewModel)) {
+                                ToolRow(icon: "chart.bar.xaxis", title: "ANALISI PROGRESSI")
+                            }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .buttonStyle(CyberButtonStyle())
+                        } header: {
                             Text("STRUMENTI")
                                 .font(.system(size: 12, weight: .black))
                                 .foregroundColor(.acidGreen)
                                 .tracking(3)
-                                .padding(.horizontal)
-                                .padding(.top, 20)
-                            
-                            VStack(spacing: 12) {
-                                NavigationLink(destination: WorkoutCalendarView().environmentObject(viewModel)) {
-                                    ToolRow(icon: "calendar", title: "CALENDARIO ALLENAMENTI")
-                                }
-                                .buttonStyle(CyberButtonStyle())
-                                
-                                NavigationLink(destination: ExerciseHistoryListView().environmentObject(viewModel)) {
-                                    ToolRow(icon: "chart.bar.xaxis", title: "ANALISI PROGRESSI")
-                                }
-                                .buttonStyle(CyberButtonStyle())
-                            }
-                            .padding(.horizontal)
-                            .padding(.bottom, 100)
                         }
+
+                        // Spacer per il bottone fisso
+                        Color.clear.frame(height: 80)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                     }
-                    
-                    // Bottone Cyber-Action fisso in basso
-                    // Bottone Cyber-Action fisso in basso
+                    .listStyle(.plain)
+                    .environment(\.editMode, $editMode)
+                    .scrollContentBackground(.hidden)
+
+                    // Bottone fisso in basso
                     Button {
-                        print("🔵 Pulsante NUOVA SCHEDA premuto")
-                        print("🔵 userId attuale: \(viewModel.userId ?? "nil")")
                         viewModel.prepareNewPlan()
-                        print("🔵 editingPlan dopo prepare: \(viewModel.editingPlan != nil ? "✅" : "❌")")
                         showingPlanEditor = true
                     } label: {
                         HStack {
@@ -115,7 +113,6 @@ struct HomeView: View {
                     }
                     .buttonStyle(CyberButtonStyle())
                     .padding(20)
-
                 }
             }
             .navigationTitle("TRACKER")
@@ -139,10 +136,8 @@ struct HomeView: View {
                 ProfileView()
                     .environmentObject(viewModel)
             }
-
         }
     }
-    
 
     var emptyStateView: some View {
         VStack(spacing: 12) {
@@ -156,7 +151,6 @@ struct HomeView: View {
     }
 }
 
-// PlanHomeCard e ToolRow rimangono invariati...
 struct PlanHomeCard: View {
     let plan: WorkoutPlan
     var body: some View {
@@ -166,7 +160,7 @@ struct PlanHomeCard: View {
                     .font(.system(.headline, design: .rounded))
                     .fontWeight(.bold)
                     .foregroundColor(.white)
-                
+
                 HStack {
                     Image(systemName: "calendar.day.timeline.left")
                     Text("\(plan.days.count) GIORNI")

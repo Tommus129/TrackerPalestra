@@ -12,6 +12,9 @@ final class MainViewModel: ObservableObject {
     @Published var editingPlan: WorkoutPlan?
     @Published var activeDraft: WorkoutSession? = nil
 
+    /// Numero massimo di sessioni caricate in memoria per evitare uso eccessivo di RAM.
+    private let historyFetchLimit = 50
+
     init(userId: String) {
         self.userId = userId
         loadPlans()
@@ -49,6 +52,7 @@ final class MainViewModel: ObservableObject {
             .collection("workoutSessions")
             .whereField("userId", isEqualTo: userId)
             .order(by: "date", descending: true)
+            .limit(to: historyFetchLimit)
             .getDocuments { [weak self] snapshot, _ in
                 Task { @MainActor in
                     let sessions = snapshot?.documents.compactMap { doc -> WorkoutSession? in
@@ -208,7 +212,6 @@ final class MainViewModel: ObservableObject {
                     isCircuit: nil,
                     restAfterSeconds: ex.restAfterSeconds
                 ))
-
             case .superset:
                 guard let ss = item.superset else { continue }
                 let groupId = UUID().uuidString
