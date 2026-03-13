@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseCore
+import FirebaseAuth
 import GoogleSignIn
 
 @main
@@ -39,7 +40,6 @@ struct RootView: View {
                     .environmentObject(authService)
             }
         }
-        // Osserva authService.$user che è @Published e ha il publisher $
         .onReceive(authService.$user) { user in
             let userId = user?.uid
             guard userId != trackedUserId else { return }
