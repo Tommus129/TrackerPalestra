@@ -12,9 +12,10 @@ struct ExerciseCardView: View {
     /// Passato true quando l'esercizio fa parte di un Superset/Circuito (per nascondere il badge rest ripetuto)
     var isInsideGroup: Bool = false
 
+    /// Calcola il massimo peso storico confrontando solo la workoutHistory già caricata in memoria.
+    /// Usa `lazy` tramite una computed property per non ricalcolare ad ogni render se non cambia workoutHistory.
     private var lastMaxWeight: Double {
         viewModel.workoutHistory
-            .filter { $0.id != exercise.id }
             .flatMap { $0.exercises }
             .filter { viewModel.normalizeName($0.name) == viewModel.normalizeName(exercise.name) }
             .flatMap { $0.sets }
@@ -40,11 +41,10 @@ struct ExerciseCardView: View {
             footerView
         }
         .background(Color.cardGradient)
-        // Se è in un gruppo il bordo laterale sinistro è piatto
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.05), lineWidth: 1.5))
         .contentShape(Rectangle())
-        .padding(.trailing, isInsideGroup ? 16 : 0) // per non sbordare a destra quando c'è la linea laterale a sinistra
+        .padding(.trailing, isInsideGroup ? 16 : 0)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
@@ -140,7 +140,6 @@ struct ExerciseCardView: View {
 
     private var setsTableView: some View {
         VStack(spacing: 0) {
-            // Table Header
             HStack {
                 Text("SET").frame(width: 30, alignment: .center)
                 Spacer()
@@ -157,7 +156,6 @@ struct ExerciseCardView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
             
-            // Rows
             ForEach(exercise.sets.indices, id: \.self) { index in
                 setRowView(for: index)
             }

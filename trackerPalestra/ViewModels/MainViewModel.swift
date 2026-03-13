@@ -152,7 +152,7 @@ final class MainViewModel: ObservableObject {
     }
 
     // MARK: - Bozza Allenamento
-    
+
     func loadDraft() {
         if let data = UserDefaults.standard.data(forKey: "workoutDraft"),
            let draft = try? JSONDecoder().decode(WorkoutSession.self, from: data) {
@@ -160,11 +160,23 @@ final class MainViewModel: ObservableObject {
         }
     }
 
+    /// Salva la bozza in modo asincrono su un thread di background per non bloccare la UI.
     func saveDraft(_ session: WorkoutSession) {
+        self.activeDraft = session
+        Task.detached(priority: .utility) {
+            if let data = try? JSONEncoder().encode(session) {
+                UserDefaults.standard.set(data, forKey: "workoutDraft")
+            }
+        }
+    }
+
+    /// Salvataggio sincrono e immediato: da usare SOLO quando l'app va in background.
+    func saveDraftImmediately(_ session: WorkoutSession) {
+        self.activeDraft = session
         if let data = try? JSONEncoder().encode(session) {
             UserDefaults.standard.set(data, forKey: "workoutDraft")
+            UserDefaults.standard.synchronize()
         }
-        self.activeDraft = session
     }
 
     func clearDraft() {
