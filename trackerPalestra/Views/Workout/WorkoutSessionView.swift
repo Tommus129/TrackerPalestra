@@ -36,6 +36,9 @@ struct WorkoutSessionView: View {
     @State private var currentRestLabel: String = "RECUPERO"
 
     @State private var supersetSetTracker: [String: [Int: Int]] = [:]
+    
+    /// Task per il debounce del salvataggio bozza: annullato e ricreato ad ogni modifica.
+    @State private var draftSaveTask: Task<Void, Never>? = nil
 
     private let ssColor  = Color.orange
     private let cirColor = Color.cyan
@@ -165,8 +168,9 @@ struct WorkoutSessionView: View {
                             }
                             
                             Button {
+                                draftSaveTask?.cancel()
                                 activeWorkoutManager.clear()
-                                viewModel.clearDraft() // Pulisce la bozza siccome salviamo
+                                viewModel.clearDraft()
                                 onSave(localSession)
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 dismiss()
@@ -208,6 +212,7 @@ struct WorkoutSessionView: View {
             activeWorkoutManager.register(localSession)
         }
         .onDisappear {
+            draftSaveTask?.cancel()
             activeWorkoutManager.clear()
         }
         .sheet(isPresented: $showingExtraSheet) {
@@ -216,23 +221,39 @@ struct WorkoutSessionView: View {
                 showingExtraSheet = false
             }
         }
-        // Auto-salvataggio della bozza in locale continuo: 
-        // Salva FISICAMENTE nel disco su ogni singola modifica, così lo swipe-up non ha più importanza!
+        // MARK: Draft auto-save con debounce
+        // Aspetta 0.8s di inattività prima di scrivere su disco, evitando scritture continue durante la digitazione.
         .onChange(of: localSession) { newValue in
-            activeWorkoutManager.register(newValue) // sync per l'app delegate se dovesse servire
+            activeWorkoutManager.register(newValue)
             
-            // Appena modifichi un valore qualsiasi, salvo nel disco la bozza in tempo reale.
-            let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
-            if hasInputs || !newValue.notes.isEmpty {
-                viewModel.saveDraft(newValue) // Scrive su UserDefaults al volo
-            } else {
-                viewModel.clearDraft()
+            draftSaveTask?.cancel()
+            draftSaveTask = Task {
+                do {
+                    try await Task.sleep(nanoseconds: 800_000_000) // 0.8s debounce
+                } catch {
+                    return // Task annullato: ignora
+                }
+                let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
+                if hasInputs || !newValue.notes.isEmpty {
+                    await MainActor.run { viewModel.saveDraft(newValue) }
+                } else {
+                    await MainActor.run { viewModel.clearDraft() }
+                }
             }
         }
-        // Quando l'app torna in foreground gestiamo il timer
+        // MARK: Scene phase handler
         .onChange(of: scenePhase) { newPhase in
-            if newPhase == .active && isTimerRunning {
-                if let endDate = timerEndDate {
+            switch newPhase {
+            case .background:
+                // Salvataggio sincrono e immediato: l'app sta per essere sospesa/terminata.
+                draftSaveTask?.cancel()
+                let hasInputs = localSession.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
+                if hasInputs || !localSession.notes.isEmpty {
+                    viewModel.saveDraftImmediately(localSession)
+                }
+            case .active:
+                // Ricalcola il timer se era in corso
+                if isTimerRunning, let endDate = timerEndDate {
                     let diff = Int(endDate.timeIntervalSince(Date()))
                     if diff > 0 {
                         remainingSeconds = diff
@@ -241,6 +262,8 @@ struct WorkoutSessionView: View {
                         finishTimer()
                     }
                 }
+            default:
+                break
             }
         }
         .onReceive(timer) { _ in
