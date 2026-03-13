@@ -24,8 +24,7 @@ struct RootView: View {
     @EnvironmentObject var authService: AuthenticationService
     @EnvironmentObject var activeWorkoutManager: ActiveWorkoutManager
 
-    /// Teniamo lo userId in @State per ricreare MainViewModel solo quando cambia.
-    @State private var currentUserId: String? = nil
+    @State private var trackedUserId: String? = nil
     @State private var viewModel: MainViewModel? = nil
 
     var body: some View {
@@ -40,9 +39,11 @@ struct RootView: View {
                     .environmentObject(authService)
             }
         }
-        .onReceive(authService.$currentUserId) { userId in
-            guard userId != currentUserId else { return }
-            currentUserId = userId
+        // Osserva authService.$user che è @Published e ha il publisher $
+        .onReceive(authService.$user) { user in
+            let userId = user?.uid
+            guard userId != trackedUserId else { return }
+            trackedUserId = userId
             if let userId = userId, !userId.isEmpty {
                 viewModel = MainViewModel(userId: userId)
                 activeWorkoutManager.currentUserId = userId
