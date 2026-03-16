@@ -12,8 +12,6 @@ final class MainViewModel: ObservableObject {
     @Published var editingPlan: WorkoutPlan?
     @Published var activeDraft: WorkoutSession? = nil
 
-    /// Dizionario pre-calcolato sessioni per giorno: aggiornato solo dopo fetch,
-    /// non ricalcolato ad ogni accesso dalla CalendarView.
     @Published private(set) var sessionsByDay: [Date: [WorkoutSession]] = [:]
 
     private let historyFetchLimit = 50
@@ -29,7 +27,7 @@ final class MainViewModel: ObservableObject {
     // MARK: - Utility
 
     func normalizeName(_ name: String) -> String {
-        return name.trimmingCharacters(in: .whitespacesAndNewlines).capitalized
+        name.trimmingCharacters(in: .whitespacesAndNewlines).capitalized
     }
 
     // MARK: - Caricamento Dati
@@ -62,15 +60,13 @@ final class MainViewModel: ObservableObject {
                         try? doc.data(as: WorkoutSession.self)
                     } ?? []
                     self?.workoutHistory = sessions
-                    self?.rebuildSessionsByDay() // aggiorna il dizionario calendario
+                    self?.rebuildSessionsByDay()
                 }
             }
     }
 
     // MARK: - sessionsByDay cache
 
-    /// Ricalcola il dizionario giorno→sessioni. Chiamato solo dopo fetch o delete,
-    /// non ad ogni render della CalendarView.
     private func rebuildSessionsByDay() {
         let cal = Calendar.current
         var dict: [Date: [WorkoutSession]] = [:]
@@ -81,6 +77,25 @@ final class MainViewModel: ObservableObject {
             }
         }
         sessionsByDay = dict
+    }
+
+    // MARK: - Aggiornamento locale sessionsByDay (evita fetch Firestore)
+
+    private func insertSessionLocally(_ session: WorkoutSession) {
+        // Rimuovi eventuale vecchia versione con stesso id
+        workoutHistory.removeAll { $0.id == session.id }
+        // Inserisci in testa (history è ordinata per data desc)
+        workoutHistory.insert(session, at: 0)
+        // Tronca al limite
+        if workoutHistory.count > historyFetchLimit {
+            workoutHistory = Array(workoutHistory.prefix(historyFetchLimit))
+        }
+        rebuildSessionsByDay()
+    }
+
+    private func removeSessionLocally(id: String) {
+        workoutHistory.removeAll { $0.id == id }
+        rebuildSessionsByDay()
     }
 
     // MARK: - Ordinamento
@@ -97,13 +112,16 @@ final class MainViewModel: ObservableObject {
 
     // MARK: - Eliminazione
 
+    /// FIX C1: rimuove per id invece di per index catturato nel closure,
+    /// eliminando la race condition che causava index-out-of-bounds.
     func deletePlan(at offsets: IndexSet) {
-        offsets.forEach { index in
-            let plan = plans[index]
-            if let id = plan.id {
-                FirestoreService.shared.deletePlan(id: id) { success in
-                    if success {
-                        DispatchQueue.main.async { self.plans.remove(at: index) }
+        let plansToDelete = offsets.map { plans[$0] }
+        plansToDelete.forEach { plan in
+            guard let id = plan.id else { return }
+            FirestoreService.shared.deletePlan(id: id) { [weak self] success in
+                if success {
+                    DispatchQueue.main.async {
+                        self?.plans.removeAll { $0.id == id }
                     }
                 }
             }
@@ -113,7 +131,8 @@ final class MainViewModel: ObservableObject {
     func deleteSession(id: String) {
         FirestoreService.shared.deleteWorkoutSession(id: id) { [weak self] success in
             if success {
-                DispatchQueue.main.async { self?.fetchWorkoutHistory() }
+                // FIX P3: aggiorna memoria locale invece di fare fetch Firestore
+                DispatchQueue.main.async { self?.removeSessionLocally(id: id) }
             }
         }
     }
@@ -159,7 +178,15 @@ final class MainViewModel: ObservableObject {
         }
         FirestoreService.shared.savePlan(plan) { [weak self] success in
             if success {
-                self?.loadPlans()
+                // FIX P4: upsert locale invece di loadPlans() (evita round-trip Firestore)
+                DispatchQueue.main.async {
+                    if let idx = self?.plans.firstIndex(where: { $0.id == plan.id }) {
+                        self?.plans[idx] = plan
+                    } else {
+                        self?.plans.append(plan)
+                        self?.plans.sort { ($0.order ?? 0) < ($1.order ?? 0) }
+                    }
+                }
                 let names = Set(plan.days.flatMap { day -> [String] in
                     day.items.flatMap { item -> [String] in
                         switch item.kind {
@@ -193,11 +220,11 @@ final class MainViewModel: ObservableObject {
         }
     }
 
+    /// FIX P2: rimosso UserDefaults.synchronize() sincrono che bloccava il main thread.
     func saveDraftImmediately(_ session: WorkoutSession) {
         self.activeDraft = session
         if let data = try? JSONEncoder().encode(session) {
             UserDefaults.standard.set(data, forKey: "workoutDraft")
-            UserDefaults.standard.synchronize()
         }
     }
 
@@ -208,7 +235,9 @@ final class MainViewModel: ObservableObject {
 
     // MARK: - Sessioni
 
-    func makeSession(plan: WorkoutPlan, day: WorkoutPlanDay) -> WorkoutSession {
+    /// FIX C3: restituisce Optional — non crea sessioni con userId vuoto.
+    func makeSession(plan: WorkoutPlan, day: WorkoutPlanDay) -> WorkoutSession? {
+        guard let userId = userId, !userId.isEmpty else { return nil }
         var exercises: [WorkoutExerciseSession] = []
 
         for item in day.resolvedItems {
@@ -216,18 +245,13 @@ final class MainViewModel: ObservableObject {
             case .exercise:
                 guard let ex = item.exercise else { continue }
                 exercises.append(WorkoutExerciseSession(
-                    exerciseId: ex.id,
-                    name: ex.name,
-                    isBodyweight: ex.isBodyweight,
+                    exerciseId: ex.id, name: ex.name, isBodyweight: ex.isBodyweight,
                     sets: (0..<ex.sets).map { idx in
                         WorkoutSet(id: UUID().uuidString, setIndex: idx,
                                    reps: ex.reps(forSet: idx), weight: 0, isPR: false)
                     },
-                    isPR: false,
-                    exerciseNotes: ex.notes,
-                    supersetGroupId: nil,
-                    supersetName: nil,
-                    isCircuit: nil,
+                    isPR: false, exerciseNotes: ex.notes,
+                    supersetGroupId: nil, supersetName: nil, isCircuit: nil,
                     restAfterSeconds: ex.restAfterSeconds
                 ))
             case .superset:
@@ -235,26 +259,21 @@ final class MainViewModel: ObservableObject {
                 let groupId = UUID().uuidString
                 for ex in ss.exercises {
                     exercises.append(WorkoutExerciseSession(
-                        exerciseId: ex.id,
-                        name: ex.name,
-                        isBodyweight: ex.isBodyweight,
+                        exerciseId: ex.id, name: ex.name, isBodyweight: ex.isBodyweight,
                         sets: (0..<ex.sets).map { idx in
                             WorkoutSet(id: UUID().uuidString, setIndex: idx,
                                        reps: ex.reps(forSet: idx), weight: 0, isPR: false)
                         },
-                        isPR: false,
-                        exerciseNotes: ex.notes,
-                        supersetGroupId: groupId,
-                        supersetName: ss.name,
-                        isCircuit: ss.isCircuit,
-                        restAfterSeconds: ss.restAfterSeconds
+                        isPR: false, exerciseNotes: ex.notes,
+                        supersetGroupId: groupId, supersetName: ss.name,
+                        isCircuit: ss.isCircuit, restAfterSeconds: ss.restAfterSeconds
                     ))
                 }
             }
         }
 
         return WorkoutSession(
-            id: UUID().uuidString, userId: userId ?? "",
+            id: UUID().uuidString, userId: userId,
             planId: plan.id ?? "", dayId: day.id,
             date: Date(), notes: "", exercises: exercises
         )
@@ -267,7 +286,8 @@ final class MainViewModel: ObservableObject {
         }
         FirestoreService.shared.saveSession(normalizedSession) { [weak self] success in
             if success {
-                self?.fetchWorkoutHistory()
+                // FIX P3: aggiorna memoria locale invece di fare fetch Firestore
+                DispatchQueue.main.async { self?.insertSessionLocally(normalizedSession) }
                 normalizedSession.exercises.forEach { FirestoreService.shared.saveExerciseName($0.name) }
                 self?.loadExerciseNames()
             }
@@ -289,7 +309,8 @@ final class MainViewModel: ObservableObject {
             try db.collection("workoutSessions").document(sessionId).setData(from: normalizedSession) { [weak self] error in
                 let success = error == nil
                 if success {
-                    self?.fetchWorkoutHistory()
+                    // FIX P3: aggiorna memoria locale invece di fare fetch Firestore
+                    DispatchQueue.main.async { self?.insertSessionLocally(normalizedSession) }
                     normalizedSession.exercises.forEach { FirestoreService.shared.saveExerciseName($0.name) }
                     self?.loadExerciseNames()
                 }

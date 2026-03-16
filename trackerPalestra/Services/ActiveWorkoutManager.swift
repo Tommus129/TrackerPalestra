@@ -17,15 +17,14 @@ class ActiveWorkoutManager: ObservableObject {
         activeSession = nil
     }
 
-    /// Salvataggio sincrono diretto su UserDefaults, senza creare ViewModel o chiamate Firestore.
-    /// Chiamato dall'AppDelegate quando l'app viene sospesa/terminata.
+    /// FIX C2: rimosso UserDefaults.synchronize() che bloccava il main thread
+    /// e poteva causare watchdog kill su iOS 15+ durante la terminazione dell'app.
     func forceSaveDraft() {
         guard let session = activeSession else { return }
         let hasInputs = session.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
         guard hasInputs || !session.notes.isEmpty else { return }
         if let data = try? JSONEncoder().encode(session) {
             UserDefaults.standard.set(data, forKey: "workoutDraft")
-            UserDefaults.standard.synchronize()
         }
     }
 }

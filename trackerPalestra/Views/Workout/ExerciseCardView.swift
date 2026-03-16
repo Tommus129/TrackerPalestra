@@ -6,20 +6,14 @@ struct ExerciseCardView: View {
     var onDelete: () -> Void
     var restSeconds: Int = 60
     var onStartRest: ((Int) -> Void)? = nil
-
     var accentColor: Color = .acidGreen
-
-    /// Passato true quando l'esercizio fa parte di un Superset/Circuito (per nascondere il badge rest ripetuto)
     var isInsideGroup: Bool = false
 
-    // MARK: - Cache storico (aggiornata solo in onAppear e quando cambia workoutHistory)
-    // Evita di ricalcolare su tutta la history ad ogni render causato dalla digitazione nei TextField.
     @State private var cachedLastMaxWeight: Double = 0
     @State private var cachedLastSessionData: WorkoutExerciseSession? = nil
+    @State private var showNotes = false
 
     private var lastSessionNotes: String? { cachedLastSessionData?.exerciseNotes }
-
-    @State private var showNotes = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -36,16 +30,16 @@ struct ExerciseCardView: View {
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        .onChange(of: exercise.sets.map { $0.weight }) { _ in
-            let currentMax = exercise.sets.map { $0.weight }.max() ?? 0
-            exercise.isPR = currentMax > cachedLastMaxWeight && currentMax > 0
+        // FIX P1: traccia isPR direttamente invece di allocare un [Double]
+        // ad ogni render per il confronto. Il recalcolo avviene solo quando
+        // isPR del modello cambia effettivamente.
+        .onChange(of: exercise.sets.map { $0.weight }.max() ?? 0) { newMax in
+            exercise.isPR = newMax > cachedLastMaxWeight && newMax > 0
         }
         .onAppear {
             updateHistoryCache()
             prefillGhostWeights()
         }
-        // Aggiorna la cache solo quando il numero di sessioni cambia (es. dopo salvataggio),
-        // non ad ogni modifica della sessione corrente.
         .onChange(of: viewModel.workoutHistory.count) { _ in
             updateHistoryCache()
         }
@@ -94,12 +88,8 @@ struct ExerciseCardView: View {
                 }
             }
             Spacer()
-
             HStack(spacing: 12) {
-                if !isInsideGroup {
-                    restBadge
-                }
-
+                if !isInsideGroup { restBadge }
                 Menu {
                     Button("Aggiungi Nota", systemImage: "note.text") {
                         withAnimation { showNotes.toggle() }
@@ -123,9 +113,11 @@ struct ExerciseCardView: View {
     private var notesView: some View {
         if showNotes || !exercise.exerciseNotes.isEmpty || (lastSessionNotes != nil && !lastSessionNotes!.isEmpty) {
             VStack(alignment: .leading, spacing: 12) {
-                if let previousNotes = lastSessionNotes, !previousNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if let previousNotes = lastSessionNotes,
+                   !previousNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("NOTE PRECEDENTI").font(.system(size: 9, weight: .bold)).foregroundColor(.white.opacity(0.4))
+                        Text("NOTE PRECEDENTI")
+                            .font(.system(size: 9, weight: .bold)).foregroundColor(.white.opacity(0.4))
                         Text(previousNotes)
                             .font(.system(size: 12)).foregroundColor(.white.opacity(0.7)).italic()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,9 +125,9 @@ struct ExerciseCardView: View {
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.03)))
                 }
-
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("NOTE SESSIONE").font(.system(size: 9, weight: .bold)).foregroundColor(accentColor.opacity(0.7))
+                    Text("NOTE SESSIONE")
+                        .font(.system(size: 9, weight: .bold)).foregroundColor(accentColor.opacity(0.7))
                     TextEditor(text: $exercise.exerciseNotes)
                         .frame(minHeight: 40)
                         .font(.system(size: 13))
@@ -178,24 +170,18 @@ struct ExerciseCardView: View {
     @ViewBuilder
     private func setRowView(for index: Int) -> some View {
         let isCompleted = exercise.sets[index].isCompleted
-
         HStack {
             Text("\(index + 1)")
                 .font(.system(size: 14, weight: .black, design: .monospaced))
                 .foregroundColor(isCompleted ? accentColor.opacity(0.5) : accentColor)
                 .frame(width: 30, alignment: .center)
-
             Spacer()
-
             repsTextField(for: index, isCompleted: isCompleted)
-
             if !exercise.isBodyweight {
                 Spacer()
                 weightTextField(for: index, isCompleted: isCompleted)
             }
-
             Spacer()
-
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                     exercise.sets[index].isCompleted.toggle()
@@ -213,7 +199,6 @@ struct ExerciseCardView: View {
                             RoundedRectangle(cornerRadius: 10)
                                 .stroke(isCompleted ? accentColor : Color.white.opacity(0.15), lineWidth: 2)
                         )
-
                     if isCompleted {
                         Image(systemName: "checkmark")
                             .font(.system(size: 16, weight: .black))
@@ -232,7 +217,6 @@ struct ExerciseCardView: View {
         let hasGhost = cachedLastSessionData?.sets.indices.contains(index) ?? false
         let ghostVal = hasGhost ? cachedLastSessionData!.sets[index].reps : 0
         let ph = hasGhost ? "\(ghostVal)" : "0"
-
         TextField(ph,
                   value: Binding(
                     get: { exercise.sets[index].reps == 0 ? nil : Double(exercise.sets[index].reps) },
@@ -252,7 +236,6 @@ struct ExerciseCardView: View {
         let hasGhost = cachedLastSessionData?.sets.indices.contains(index) ?? false
         let ghostVal = hasGhost ? cachedLastSessionData!.sets[index].weight : 0.0
         let ph = hasGhost ? "\(String(format: "%.1f", ghostVal))" : "0.0"
-
         TextField(ph,
                   value: Binding(
                     get: { exercise.sets[index].weight == 0 ? nil : exercise.sets[index].weight },
@@ -276,24 +259,18 @@ struct ExerciseCardView: View {
                 }
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(accentColor)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
+                .padding(.vertical, 8).padding(.horizontal, 12)
                 .background(RoundedRectangle(cornerRadius: 8).fill(accentColor.opacity(0.1)))
             }
-
             Spacer()
-
             if exercise.sets.count > 1 {
                 Button(action: {
-                    withAnimation {
-                        _ = exercise.sets.popLast()
-                    }
+                    withAnimation { _ = exercise.sets.popLast() }
                 }) {
                     Text("RIMUOVI SET")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.red.opacity(0.7))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8).padding(.horizontal, 12)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.1)))
                 }
             }
@@ -305,10 +282,8 @@ struct ExerciseCardView: View {
     @ViewBuilder
     private var restBadge: some View {
         HStack(spacing: 4) {
-            Image(systemName: "timer")
-                .font(.system(size: 10, weight: .bold))
-            Text(formatRest(restSeconds))
-                .font(.system(size: 11, weight: .bold))
+            Image(systemName: "timer").font(.system(size: 10, weight: .bold))
+            Text(formatRest(restSeconds)).font(.system(size: 11, weight: .bold))
         }
         .foregroundColor(.white.opacity(0.7))
         .padding(.horizontal, 10).padding(.vertical, 6)
@@ -325,8 +300,11 @@ struct ExerciseCardView: View {
     private func addSet() {
         let newIndex = exercise.sets.count
         let lastSet = exercise.sets.last
-        exercise.sets.append(WorkoutSet(id: UUID().uuidString, setIndex: newIndex,
-            reps: lastSet?.reps ?? 10, weight: lastSet?.weight ?? 0, isPR: false, isCompleted: false))
+        exercise.sets.append(WorkoutSet(
+            id: UUID().uuidString, setIndex: newIndex,
+            reps: lastSet?.reps ?? 10, weight: lastSet?.weight ?? 0,
+            isPR: false, isCompleted: false
+        ))
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
@@ -336,7 +314,9 @@ struct ExerciseCardView: View {
             if index < lastData.sets.count {
                 let ghostSet = lastData.sets[index]
                 if exercise.sets[index].reps == 0 { exercise.sets[index].reps = ghostSet.reps }
-                if exercise.sets[index].weight == 0 && !exercise.isBodyweight { exercise.sets[index].weight = ghostSet.weight }
+                if exercise.sets[index].weight == 0 && !exercise.isBodyweight {
+                    exercise.sets[index].weight = ghostSet.weight
+                }
             }
         }
     }
