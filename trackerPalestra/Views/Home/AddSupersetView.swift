@@ -65,7 +65,6 @@ struct AddSupersetView: View {
 
     // MARK: - Sections
 
-    /// Toggle Superset / Circuito in cima
     private var typeToggle: some View {
         VStack(alignment: .leading, spacing: 10) {
             label("TIPO")
@@ -86,7 +85,6 @@ struct AddSupersetView: View {
             .background(RoundedRectangle(cornerRadius: corner).fill(Color.white.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.white.opacity(0.08), lineWidth: 1))
 
-            // Descrizione del tipo selezionato
             Text(isCircuit
                  ? "Il timer parte dopo che tutti gli esercizi del giro sono stati completati."
                  : "Il timer parte dopo ogni singolo giro completo degli esercizi.")
@@ -132,7 +130,6 @@ struct AddSupersetView: View {
                 Spacer()
             }
             .padding(14).background(fieldBg)
-            // Preset rapidi
             HStack(spacing: 8) {
                 ForEach([30, 60, 90, 120, 180], id: \.self) { sec in
                     Button { restSeconds = sec } label: {
@@ -189,7 +186,6 @@ struct AddSupersetView: View {
     private func supersetExRow(index i: Int) -> some View {
         VStack(alignment: .leading, spacing: 10) {
 
-            // Nome + autocomplete
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("\(i + 1).")
@@ -227,7 +223,6 @@ struct AddSupersetView: View {
                 }
             }
 
-            // Serie
             HStack(spacing: 16) {
                 Text("SERIE").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                 stepButton(icon: "minus") {
@@ -242,13 +237,12 @@ struct AddSupersetView: View {
             }
             .padding(10).background(fieldBg)
 
-            // Ripetizioni
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("RIPETIZIONI").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     Spacer()
                     Toggle("", isOn: $exStates[i].variableReps).labelsHidden().tint(accent)
-                        .onChange(of: exStates[i].variableReps) { on in
+                        .onChange(of: exStates[i].variableReps) { _, on in
                             if on { exStates[i].repsPerSet = Array(repeating: exStates[i].uniformReps, count: exStates[i].sets) }
                         }
                     Text("Diverse per serie").font(.caption2).foregroundColor(.gray)
