@@ -12,7 +12,10 @@ final class MainViewModel: ObservableObject {
     @Published var editingPlan: WorkoutPlan?
     @Published var activeDraft: WorkoutSession? = nil
 
-    /// Numero massimo di sessioni caricate in memoria per evitare uso eccessivo di RAM.
+    /// Dizionario pre-calcolato sessioni per giorno: aggiornato solo dopo fetch,
+    /// non ricalcolato ad ogni accesso dalla CalendarView.
+    @Published private(set) var sessionsByDay: [Date: [WorkoutSession]] = [:]
+
     private let historyFetchLimit = 50
 
     init(userId: String) {
@@ -59,8 +62,25 @@ final class MainViewModel: ObservableObject {
                         try? doc.data(as: WorkoutSession.self)
                     } ?? []
                     self?.workoutHistory = sessions
+                    self?.rebuildSessionsByDay() // aggiorna il dizionario calendario
                 }
             }
+    }
+
+    // MARK: - sessionsByDay cache
+
+    /// Ricalcola il dizionario giorno→sessioni. Chiamato solo dopo fetch o delete,
+    /// non ad ogni render della CalendarView.
+    private func rebuildSessionsByDay() {
+        let cal = Calendar.current
+        var dict: [Date: [WorkoutSession]] = [:]
+        for session in workoutHistory {
+            let comps = cal.dateComponents([.year, .month, .day], from: session.date)
+            if let day = cal.date(from: comps) {
+                dict[day, default: []].append(session)
+            }
+        }
+        sessionsByDay = dict
     }
 
     // MARK: - Ordinamento
@@ -164,7 +184,6 @@ final class MainViewModel: ObservableObject {
         }
     }
 
-    /// Salva la bozza in modo asincrono su un thread di background per non bloccare la UI.
     func saveDraft(_ session: WorkoutSession) {
         self.activeDraft = session
         Task.detached(priority: .utility) {
@@ -174,7 +193,6 @@ final class MainViewModel: ObservableObject {
         }
     }
 
-    /// Salvataggio sincrono e immediato: da usare SOLO quando l'app va in background.
     func saveDraftImmediately(_ session: WorkoutSession) {
         self.activeDraft = session
         if let data = try? JSONEncoder().encode(session) {
@@ -303,19 +321,5 @@ final class MainViewModel: ObservableObject {
             }
         }
         return nil
-    }
-}
-
-extension MainViewModel {
-    var sessionsByDay: [Date: [WorkoutSession]] {
-        let cal = Calendar.current
-        var dict: [Date: [WorkoutSession]] = [:]
-        for session in workoutHistory {
-            let comps = cal.dateComponents([.year, .month, .day], from: session.date)
-            if let day = cal.date(from: comps) {
-                dict[day, default: []].append(session)
-            }
-        }
-        return dict
     }
 }

@@ -29,7 +29,11 @@ struct WorkoutSessionView: View {
     @State private var isTimerRunning: Bool = false
     @State private var timerValuePreset: Int = 60
     @State private var timerEndDate: Date? = nil
-    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    // Timer NON autoconnesso: viene connesso/disconnesso manualmente
+    // solo quando il conto alla rovescia è attivo, risparmiando batteria.
+    @State private var timerPublisher = Timer.publish(every: 1, on: .main, in: .common)
+    @State private var timerCancellable: Cancellable? = nil
 
     @State private var showingExtraSheet = false
     @State private var showFullScreenTimer = false
@@ -169,6 +173,7 @@ struct WorkoutSessionView: View {
 
                             Button {
                                 draftSaveTask?.cancel()
+                                stopTimer()
                                 activeWorkoutManager.clear()
                                 viewModel.clearDraft()
                                 onSave(localSession)
@@ -213,6 +218,7 @@ struct WorkoutSessionView: View {
         }
         .onDisappear {
             draftSaveTask?.cancel()
+            stopTimer()
             activeWorkoutManager.clear()
         }
         .sheet(isPresented: $showingExtraSheet) {
@@ -222,17 +228,12 @@ struct WorkoutSessionView: View {
             }
         }
         // MARK: Draft auto-save con debounce
-        // Il register del manager avviene dopo 0.3s (debounce breve), per non copiare
-        // l'intero struct WorkoutSession in modo sincrono ad ogni keystroke.
-        // Il salvataggio su disco avviene dopo 0.8s di inattività.
         .onChange(of: localSession) { newValue in
             draftSaveTask?.cancel()
             draftSaveTask = Task {
-                // Fase 1: aggiorna il manager dopo 0.3s (evita copia sincrona sul main thread)
                 do { try await Task.sleep(nanoseconds: 300_000_000) } catch { return }
                 await MainActor.run { activeWorkoutManager.register(newValue) }
 
-                // Fase 2: salva la bozza su disco dopo altri 0.5s (totale 0.8s)
                 do { try await Task.sleep(nanoseconds: 500_000_000) } catch { return }
                 let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
                 if hasInputs || !newValue.notes.isEmpty {
@@ -265,7 +266,8 @@ struct WorkoutSessionView: View {
                 break
             }
         }
-        .onReceive(timer) { _ in
+        // MARK: Timer tick — riceve eventi solo quando timerCancellable è connesso
+        .onReceive(timerPublisher) { _ in
             guard isTimerRunning, let endDate = timerEndDate else { return }
             let diff = Int(endDate.timeIntervalSince(Date()))
             if diff > 0 {
@@ -362,6 +364,18 @@ struct WorkoutSessionView: View {
 
     // MARK: - Timer logic
 
+    /// Avvia il publisher del timer (connessione esplicita).
+    private func startTimer() {
+        guard timerCancellable == nil else { return }
+        timerCancellable = timerPublisher.connect()
+    }
+
+    /// Ferma e disconnette il publisher del timer, azzerando il consumo.
+    private func stopTimer() {
+        timerCancellable?.cancel()
+        timerCancellable = nil
+    }
+
     private func handleSupersetSetCompleted(groupId: String, exIdx: Int, allIndices: [Int], restSeconds: Int, label: String) {
         let completedCount = localSession.exercises[exIdx].sets.filter { $0.isCompleted }.count
         if supersetSetTracker[groupId] == nil { supersetSetTracker[groupId] = [:] }
@@ -385,6 +399,7 @@ struct WorkoutSessionView: View {
         isTimerRunning = true
         currentRestLabel = label.uppercased()
 
+        startTimer() // connette il publisher solo ora
         scheduleNotification(seconds: seconds, label: label)
 
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = true }
@@ -394,6 +409,7 @@ struct WorkoutSessionView: View {
     private func finishTimer() {
         isTimerRunning = false
         timerEndDate = nil
+        stopTimer() // disconnette il publisher: zero tick fino al prossimo recupero
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
@@ -521,6 +537,7 @@ struct WorkoutSessionView: View {
                                 remainingSeconds = seconds
                                 isTimerRunning = false
                                 timerEndDate = nil
+                                stopTimer()
                                 cancelNotification()
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
@@ -538,6 +555,7 @@ struct WorkoutSessionView: View {
                             isTimerRunning = false
                             remainingSeconds = timerValuePreset
                             timerEndDate = nil
+                            stopTimer()
                             cancelNotification()
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         } label: {
@@ -547,6 +565,7 @@ struct WorkoutSessionView: View {
                         Button {
                             if isTimerRunning {
                                 isTimerRunning = false
+                                stopTimer()
                                 cancelNotification()
                                 let diff = Int(timerEndDate?.timeIntervalSince(Date()) ?? 0)
                                 remainingSeconds = max(0, diff)
@@ -554,6 +573,7 @@ struct WorkoutSessionView: View {
                             } else {
                                 isTimerRunning = true
                                 timerEndDate = Date().addingTimeInterval(TimeInterval(remainingSeconds))
+                                startTimer()
                                 scheduleNotification(seconds: remainingSeconds, label: currentRestLabel)
                             }
                             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
