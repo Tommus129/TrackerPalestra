@@ -151,7 +151,7 @@ struct EditExerciseView: View {
                         .padding(.horizontal, 14).padding(.vertical, 10).background(fieldBg)
                     }
                 }
-                .onChange(of: variableReps) { on in
+                .onChange(of: variableReps) { _, on in
                     if on {
                         if repsPerSet.count < sets {
                             let diff = sets - repsPerSet.count
