@@ -30,8 +30,6 @@ struct WorkoutSessionView: View {
     @State private var timerValuePreset: Int = 60
     @State private var timerEndDate: Date? = nil
 
-    // Timer NON autoconnesso: viene connesso/disconnesso manualmente
-    // solo quando il conto alla rovescia è attivo, risparmiando batteria.
     @State private var timerPublisher = Timer.publish(every: 1, on: .main, in: .common)
     @State private var timerCancellable: Cancellable? = nil
 
@@ -41,7 +39,6 @@ struct WorkoutSessionView: View {
 
     @State private var supersetSetTracker: [String: [Int: Int]] = [:]
 
-    /// Task unificato per debounce: gestisce sia il register del manager che il salvataggio bozza.
     @State private var draftSaveTask: Task<Void, Never>? = nil
 
     private let ssColor  = Color.orange
@@ -95,7 +92,6 @@ struct WorkoutSessionView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
 
-                        // Data e Note
                         VStack(spacing: 12) {
                             HStack {
                                 Image(systemName: "calendar")
@@ -135,7 +131,6 @@ struct WorkoutSessionView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
 
-                        // Lista Esercizi
                         ForEach(sessionItems) { item in
                             switch item {
                             case .single(let indices):
@@ -157,7 +152,6 @@ struct WorkoutSessionView: View {
                             }
                         }
 
-                        // Bottoni Aggiungi / Completa
                         VStack(spacing: 16) {
                             Button { hideKeyboard(); showingExtraSheet = true } label: {
                                 HStack {
@@ -228,7 +222,7 @@ struct WorkoutSessionView: View {
             }
         }
         // MARK: Draft auto-save con debounce
-        .onChange(of: localSession) { newValue in
+        .onChange(of: localSession) { _, newValue in
             draftSaveTask?.cancel()
             draftSaveTask = Task {
                 do { try await Task.sleep(nanoseconds: 300_000_000) } catch { return }
@@ -244,7 +238,7 @@ struct WorkoutSessionView: View {
             }
         }
         // MARK: Scene phase handler
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .background:
                 draftSaveTask?.cancel()
@@ -266,7 +260,6 @@ struct WorkoutSessionView: View {
                 break
             }
         }
-        // MARK: Timer tick — riceve eventi solo quando timerCancellable è connesso
         .onReceive(timerPublisher) { _ in
             guard isTimerRunning, let endDate = timerEndDate else { return }
             let diff = Int(endDate.timeIntervalSince(Date()))
@@ -364,13 +357,11 @@ struct WorkoutSessionView: View {
 
     // MARK: - Timer logic
 
-    /// Avvia il publisher del timer (connessione esplicita).
     private func startTimer() {
         guard timerCancellable == nil else { return }
         timerCancellable = timerPublisher.connect()
     }
 
-    /// Ferma e disconnette il publisher del timer, azzerando il consumo.
     private func stopTimer() {
         timerCancellable?.cancel()
         timerCancellable = nil
@@ -399,7 +390,7 @@ struct WorkoutSessionView: View {
         isTimerRunning = true
         currentRestLabel = label.uppercased()
 
-        startTimer() // connette il publisher solo ora
+        startTimer()
         scheduleNotification(seconds: seconds, label: label)
 
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = true }
@@ -409,7 +400,7 @@ struct WorkoutSessionView: View {
     private func finishTimer() {
         isTimerRunning = false
         timerEndDate = nil
-        stopTimer() // disconnette il publisher: zero tick fino al prossimo recupero
+        stopTimer()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = false }
