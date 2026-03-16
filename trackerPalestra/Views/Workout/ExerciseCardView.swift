@@ -15,6 +15,12 @@ struct ExerciseCardView: View {
 
     private var lastSessionNotes: String? { cachedLastSessionData?.exerciseNotes }
 
+    /// Peso massimo corrente tra tutti i set — estratto in computed property
+    /// per evitare il timeout del type-checker quando usato in .onChange.
+    private var currentMaxWeight: Double {
+        exercise.sets.map { $0.weight }.max() ?? 0
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerView
@@ -30,10 +36,9 @@ struct ExerciseCardView: View {
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        // FIX P1: traccia isPR direttamente invece di allocare un [Double]
-        // ad ogni render per il confronto. Il recalcolo avviene solo quando
-        // isPR del modello cambia effettivamente.
-        .onChange(of: exercise.sets.map { $0.weight }.max() ?? 0) { newMax in
+        // FIX P1: currentMaxWeight è una computed property atomica (Double),
+        // il type-checker non deve più inferire la catena inline.
+        .onChange(of: currentMaxWeight) { newMax in
             exercise.isPR = newMax > cachedLastMaxWeight && newMax > 0
         }
         .onAppear {
