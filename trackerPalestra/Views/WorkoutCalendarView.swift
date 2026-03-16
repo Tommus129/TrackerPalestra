@@ -1,7 +1,6 @@
 import SwiftUI
 
 // MARK: - DateFormatter statico condiviso
-// Evita la riallocazione ad ogni render dell'header del calendario.
 private let calendarMonthFormatter: DateFormatter = {
     let f = DateFormatter()
     f.dateFormat = "MMMM yyyy"
@@ -62,7 +61,6 @@ struct WorkoutCalendarView: View {
                 .offset(x: 100, y: -150)
 
             VStack(spacing: 0) {
-                // Header mese
                 HStack {
                     Button(action: { changeMonth(by: -1) }) {
                         Image(systemName: "chevron.left.square.fill")
@@ -80,7 +78,6 @@ struct WorkoutCalendarView: View {
                 }
                 .padding(.horizontal, 25).padding(.vertical, 15)
 
-                // Griglia giorni
                 let days = daysInMonth(for: currentMonth)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 10) {
                     ForEach(days, id: \.self) { day in
@@ -110,7 +107,6 @@ struct WorkoutCalendarView: View {
                 }
                 .padding(.horizontal)
 
-                // Lista sessioni
                 VStack(alignment: .leading, spacing: 15) {
                     Text("DETTAGLIO ATTIVITÀ")
                         .font(.system(size: 10, weight: .black))
@@ -164,8 +160,6 @@ struct WorkoutCalendarView: View {
         }
         .navigationTitle("DIARIO")
         .navigationBarTitleDisplayMode(.inline)
-        // Fetch solo se la history non è ancora caricata — evita round-trip
-        // ridondanti ad ogni navigazione verso questa view.
         .onAppear {
             if viewModel.workoutHistory.isEmpty {
                 viewModel.fetchWorkoutHistory()
@@ -202,8 +196,6 @@ struct CalendarExerciseCard: View {
     private let ssColor  = Color.orange
     private let cirColor = Color.cyan
 
-    // planInfo cachato: evita la ricerca lineare su viewModel.plans
-    // ad ogni render della card.
     @State private var cachedPlanTitle: String = "SCHEDA"
     @State private var cachedDayLabel: String  = "GIORNO"
 
@@ -272,7 +264,7 @@ struct CalendarExerciseCard: View {
         }
         .buttonStyle(.plain)
         .onAppear { updatePlanInfoCache() }
-        .onChange(of: viewModel.plans) { _ in updatePlanInfoCache() }
+        .onChange(of: viewModel.plans) { _, _ in updatePlanInfoCache() }
     }
 
     private func updatePlanInfoCache() {
@@ -282,7 +274,6 @@ struct CalendarExerciseCard: View {
         cachedDayLabel  = day?.label.uppercased() ?? "GIORNO"
     }
 
-    // MARK: - Riga esercizio normale
     @ViewBuilder
     private func singleExerciseRow(_ ex: WorkoutExerciseSession) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -317,7 +308,6 @@ struct CalendarExerciseCard: View {
         }
     }
 
-    // MARK: - Blocco superset / circuito
     @ViewBuilder
     private func supersetBlock(_ exercises: [WorkoutExerciseSession], name: String, isCircuit: Bool) -> some View {
         let accent = isCircuit ? cirColor : ssColor
