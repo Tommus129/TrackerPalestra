@@ -6,18 +6,15 @@ struct PlanDetailView: View {
     @State private var selectedDayId: String?
     @State private var activeSession: WorkoutSession?
     @State private var showingEdit = false
-    
-    // Gestione Draft (Bozza)
+
     @State private var showingDraftAlert = false
     @State private var pendingNewSession: WorkoutSession? = nil
 
     private var selectedDay: WorkoutPlanDay? {
-        // Legge sempre dalla versione aggiornata nei plans (dopo un salvataggio)
         let currentPlan = viewModel.plans.first(where: { $0.id == plan.id }) ?? plan
         return currentPlan.days.first { $0.id == selectedDayId }
     }
 
-    /// Piano aggiornato (dopo modifiche)
     private var currentPlan: WorkoutPlan {
         viewModel.plans.first(where: { $0.id == plan.id }) ?? plan
     }
@@ -35,7 +32,6 @@ struct PlanDetailView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-
                         Text("SELEZIONA IL GIORNO")
                             .font(.system(size: 11, weight: .black))
                             .foregroundColor(.acidGreen)
@@ -125,7 +121,7 @@ struct PlanDetailView: View {
                 if isSelected {
                     Image(systemName: "bolt.fill")
                         .foregroundColor(.acidGreen)
-                        .pulsingNeon()
+                        .subtleGlow()
                 }
             }
             .padding()
@@ -247,18 +243,20 @@ struct PlanDetailView: View {
         .padding(.horizontal)
     }
 
+    // MARK: - Start Button
+    // FIX C3 follow-up: entrambi i percorsi usano guard let per gestire
+    // il caso in cui makeSession restituisca nil (userId non disponibile).
     private var startButton: some View {
         Button {
-            if let day = selectedDay {
-                let plan = currentPlan
-                let newSession = viewModel.makeSession(plan: plan, day: day)
-                
-                if viewModel.activeDraft != nil {
-                    self.pendingNewSession = newSession
-                    self.showingDraftAlert = true
-                } else {
-                    activeSession = newSession
-                }
+            guard let day = selectedDay,
+                  let newSession = viewModel.makeSession(plan: currentPlan, day: day)
+            else { return }
+
+            if viewModel.activeDraft != nil {
+                self.pendingNewSession = newSession
+                self.showingDraftAlert = true
+            } else {
+                activeSession = newSession
             }
         } label: {
             HStack {
@@ -271,7 +269,7 @@ struct PlanDetailView: View {
             .padding(.vertical, 18)
             .background(selectedDay == nil ? Color.gray.opacity(0.3) : Color.acidGreen)
             .cornerRadius(15)
-            .pulsingNeon(color: selectedDay == nil ? .clear : .acidGreen)
+            .subtleGlow(color: selectedDay == nil ? .clear : .acidGreen)
         }
         .disabled(selectedDay == nil)
         .buttonStyle(CyberButtonStyle())
