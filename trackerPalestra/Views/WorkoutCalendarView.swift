@@ -1,5 +1,13 @@
 import SwiftUI
 
+// MARK: - DateFormatter statico condiviso
+// Evita la riallocazione ad ogni render dell'header del calendario.
+private let calendarMonthFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "MMMM yyyy"
+    return f
+}()
+
 // MARK: - Raggruppamento sessione per calendario
 private enum CalendarItem: Identifiable {
     case single(WorkoutExerciseSession)
@@ -61,7 +69,7 @@ struct WorkoutCalendarView: View {
                             .foregroundColor(.acidGreen).font(.title2)
                     }
                     Spacer()
-                    Text(monthYearString(currentMonth).uppercased())
+                    Text(calendarMonthFormatter.string(from: currentMonth).uppercased())
                         .font(.system(size: 14, weight: .black))
                         .foregroundColor(.white).tracking(3)
                     Spacer()
@@ -156,8 +164,13 @@ struct WorkoutCalendarView: View {
         }
         .navigationTitle("DIARIO")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { viewModel.fetchWorkoutHistory() }
-        // Sheet modifica sessione
+        // Fetch solo se la history non è ancora caricata — evita round-trip
+        // ridondanti ad ogni navigazione verso questa view.
+        .onAppear {
+            if viewModel.workoutHistory.isEmpty {
+                viewModel.fetchWorkoutHistory()
+            }
+        }
         .sheet(item: $editingSession) { session in
             WorkoutSessionView(session: session) { saved in
                 viewModel.updateSession(saved) { _ in }
@@ -166,9 +179,6 @@ struct WorkoutCalendarView: View {
         }
     }
 
-    private func monthYearString(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "MMMM yyyy"; return f.string(from: date)
-    }
     private func changeMonth(by offset: Int) {
         if let newDate = Calendar.current.date(byAdding: .month, value: offset, to: currentMonth) {
             withAnimation { currentMonth = newDate; selectedDay = nil }
@@ -192,38 +202,34 @@ struct CalendarExerciseCard: View {
     private let ssColor  = Color.orange
     private let cirColor = Color.cyan
 
-    private var planInfo: (title: String, day: String) {
-        let plan = viewModel.plans.first(where: { $0.id == session.planId })
-        let day = plan?.days.first(where: { $0.id == session.dayId })
-        return (plan?.name.uppercased() ?? "SCHEDA", day?.label.uppercased() ?? "GIORNO")
-    }
+    // planInfo cachato: evita la ricerca lineare su viewModel.plans
+    // ad ogni render della card.
+    @State private var cachedPlanTitle: String = "SCHEDA"
+    @State private var cachedDayLabel: String  = "GIORNO"
 
     private var items: [CalendarItem] { groupExercises(session.exercises) }
 
     var body: some View {
         Button(action: { onEditTap?() }) {
             HStack(spacing: 0) {
-                // Accent bar verde
                 Rectangle()
                     .fill(Color.acidGreen)
                     .frame(width: 4)
 
                 VStack(alignment: .leading, spacing: 15) {
-                    // Header piano / giorno + bottone modifica
                     HStack(spacing: 12) {
                         HStack(spacing: 5) {
                             Image(systemName: "folder.fill").font(.system(size: 8))
-                            Text(planInfo.title).font(.system(size: 9, weight: .black))
+                            Text(cachedPlanTitle).font(.system(size: 9, weight: .black))
                         }
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Color.acidGreen).foregroundColor(.customBlack).cornerRadius(4)
 
-                        Text(planInfo.day)
+                        Text(cachedDayLabel)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.white.opacity(0.6))
                         Spacer()
 
-                        // Bottone matita tap-friendly
                         HStack(spacing: 4) {
                             Image(systemName: "pencil")
                                 .font(.system(size: 9, weight: .bold))
@@ -236,7 +242,6 @@ struct CalendarExerciseCard: View {
                         .background(Capsule().fill(Color.acidGreen.opacity(0.85)))
                     }
 
-                    // Esercizi raggruppati
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(items) { item in
                             switch item {
@@ -248,7 +253,6 @@ struct CalendarExerciseCard: View {
                         }
                     }
 
-                    // Note sessione
                     if !session.notes.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Divider().background(Color.white.opacity(0.05))
@@ -267,6 +271,15 @@ struct CalendarExerciseCard: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.05), lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .onAppear { updatePlanInfoCache() }
+        .onChange(of: viewModel.plans) { _ in updatePlanInfoCache() }
+    }
+
+    private func updatePlanInfoCache() {
+        let plan = viewModel.plans.first(where: { $0.id == session.planId })
+        let day  = plan?.days.first(where: { $0.id == session.dayId })
+        cachedPlanTitle = plan?.name.uppercased() ?? "SCHEDA"
+        cachedDayLabel  = day?.label.uppercased() ?? "GIORNO"
     }
 
     // MARK: - Riga esercizio normale
@@ -312,7 +325,6 @@ struct CalendarExerciseCard: View {
         let chipIcon  = isCircuit ? "arrow.3.trianglepath" : "link"
 
         VStack(alignment: .leading, spacing: 0) {
-            // Header
             HStack(spacing: 8) {
                 HStack(spacing: 4) {
                     Image(systemName: chipIcon).font(.system(size: 8, weight: .black))
@@ -329,7 +341,6 @@ struct CalendarExerciseCard: View {
             }
             .padding(.bottom, 8)
 
-            // Esercizi con barra verticale colorata
             HStack(spacing: 0) {
                 Rectangle()
                     .fill(accent.opacity(0.5))
@@ -378,7 +389,6 @@ struct CalendarExerciseCard: View {
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(accent.opacity(0.25), lineWidth: 1))
     }
 
-    // MARK: - Helper
     private func setsString(_ ex: WorkoutExerciseSession) -> String {
         ex.sets.map { s in
             ex.isBodyweight ? "\(s.reps)" : "\(s.reps)x\(String(format: "%.1f", s.weight))kg"

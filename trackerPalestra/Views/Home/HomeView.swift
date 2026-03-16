@@ -18,9 +18,8 @@ struct HomeView: View {
                     .offset(x: -150, y: -200)
 
                 VStack(spacing: 0) {
-                    // Unica List che gestisce tutto lo scroll — niente ScrollView annidata
                     List {
-                        // Header schede
+                        // MARK: Schede
                         Section {
                             if viewModel.plans.isEmpty {
                                 emptyStateView
@@ -62,7 +61,7 @@ struct HomeView: View {
                             .padding(.top, 8)
                         }
 
-                        // Strumenti
+                        // MARK: Strumenti
                         Section {
                             NavigationLink(destination: WorkoutCalendarView().environmentObject(viewModel)) {
                                 ToolRow(icon: "calendar", title: "CALENDARIO ALLENAMENTI")
@@ -86,7 +85,6 @@ struct HomeView: View {
                                 .tracking(3)
                         }
 
-                        // Spacer per il bottone fisso
                         Color.clear.frame(height: 80)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -95,7 +93,8 @@ struct HomeView: View {
                     .environment(\.editMode, $editMode)
                     .scrollContentBackground(.hidden)
 
-                    // Bottone fisso in basso
+                    // MARK: Bottone fisso — .subtleGlow() invece di .pulsingNeon()
+                    // .pulsingNeon aveva 2 shadow animate in repeatForever sul main thread.
                     Button {
                         viewModel.prepareNewPlan()
                         showingPlanEditor = true
@@ -109,7 +108,7 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                         .background(Color.acidGreen)
                         .cornerRadius(12)
-                        .pulsingNeon(color: .acidGreen)
+                        .subtleGlow(color: .acidGreen)
                     }
                     .buttonStyle(CyberButtonStyle())
                     .padding(20)
@@ -118,9 +117,7 @@ struct HomeView: View {
             .navigationTitle("TRACKER")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingProfile = true
-                    } label: {
+                    Button { showingProfile = true } label: {
                         Image(systemName: "person.circle.fill")
                             .font(.title2)
                             .foregroundColor(.acidGreen)
@@ -129,12 +126,10 @@ struct HomeView: View {
             }
             .preferredColorScheme(.dark)
             .sheet(isPresented: $showingPlanEditor) {
-                WorkoutPlanEditView()
-                    .environmentObject(viewModel)
+                WorkoutPlanEditView().environmentObject(viewModel)
             }
             .sheet(isPresented: $showingProfile) {
-                ProfileView()
-                    .environmentObject(viewModel)
+                ProfileView().environmentObject(viewModel)
             }
         }
     }
@@ -151,6 +146,9 @@ struct HomeView: View {
     }
 }
 
+// MARK: - PlanHomeCard
+// .animatedBorder() → .staticBorder(): eliminata l'animazione
+// .repeatForever per ogni card (era N animazioni GPU in parallelo).
 struct PlanHomeCard: View {
     let plan: WorkoutPlan
     var body: some View {
@@ -175,10 +173,11 @@ struct PlanHomeCard: View {
         }
         .padding()
         .glassStyle()
-        .animatedBorder()
+        .staticBorder()
     }
 }
 
+// MARK: - ToolRow
 struct ToolRow: View {
     let icon: String
     let title: String

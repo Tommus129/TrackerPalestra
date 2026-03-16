@@ -2,10 +2,9 @@ import SwiftUI
 
 extension Color {
     static let customBlack = Color(red: 0.05, green: 0.05, blue: 0.05)
-    static let acidGreen = Color(red: 0.75, green: 1.0, blue: 0.0)
-    static let deepPurple = Color(red: 0.5, green: 0.0, blue: 1.0)
-    static let softPurple = Color(red: 0.5, green: 0.0, blue: 1.0).opacity(0.15)
-    
+    static let acidGreen   = Color(red: 0.75, green: 1.0, blue: 0.0)
+    static let deepPurple  = Color(red: 0.5,  green: 0.0, blue: 1.0)
+
     static let cardGradient = LinearGradient(
         colors: [Color.white.opacity(0.1), Color.white.opacity(0.02)],
         startPoint: .topLeading,
@@ -13,46 +12,40 @@ extension Color {
     )
 }
 
-// MARK: - Punto 3: Glow Variabile (Pulsante)
-struct PulsingNeonModifier: ViewModifier {
-    @State private var pulse: CGFloat = 1.0
+// MARK: - Glow statico (una sola shadow, nessuna animazione infinita)
+struct SubtleGlowModifier: ViewModifier {
     var color: Color
-
     func body(content: Content) -> some View {
         content
-            .shadow(color: color.opacity(0.4 * pulse), radius: 10 * pulse)
-            .shadow(color: color.opacity(0.2 * pulse), radius: 20 * pulse)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
-                    pulse = 1.4
-                }
-            }
+            .shadow(color: color.opacity(0.45), radius: 12)
     }
 }
 
-// MARK: - Punto 4: Animated Border (Bordo Rotante)
-struct AnimatedCyberBorder: ViewModifier {
-    @State private var rotation: Double = 0
+// MARK: - Bordo statico con gradient (zero animazioni per card)
+// Sostituisce AnimatedCyberBorder che avviava un'animazione .repeatForever
+// per ogni istanza, causando N thread GPU in parallelo sulla HomeView.
+struct StaticGradientBorder: ViewModifier {
     var colors: [Color] = [.acidGreen, .deepPurple, .acidGreen]
+    var cornerRadius: CGFloat = 15
+    var lineWidth: CGFloat = 1.5
 
     func body(content: Content) -> some View {
         content
             .overlay(
-                RoundedRectangle(cornerRadius: 15)
+                RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(
-                        AngularGradient(gradient: Gradient(colors: colors), center: .center, angle: .degrees(rotation)),
-                        lineWidth: 2
+                        LinearGradient(
+                            colors: colors,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: lineWidth
                     )
             )
-            .onAppear {
-                withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
-                    rotation = 360
-                }
-            }
     }
 }
 
-// MARK: - Punto 6: Micro-interazioni (Effetto Pressione)
+// MARK: - Bottone (effetto pressione)
 struct CyberButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -61,33 +54,35 @@ struct CyberButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
-// MARK: - Theme Colors Helper
+
+// MARK: - Theme
 struct Theme {
-    static let backgroundColor = Color.customBlack
-    static let primaryColor = Color.acidGreen
-    static let secondaryColor = Color.deepPurple
-    static let cardColor = Color.white.opacity(0.05)
-    static let textColor = Color.white
+    static let backgroundColor    = Color.customBlack
+    static let primaryColor       = Color.acidGreen
+    static let secondaryColor     = Color.deepPurple
+    static let cardColor          = Color.white.opacity(0.05)
+    static let textColor          = Color.white
     static let secondaryTextColor = Color.white.opacity(0.6)
 }
 
-
 extension View {
-    func pulsingNeon(color: Color = .acidGreen) -> some View {
-        modifier(PulsingNeonModifier(color: color))
+    /// Glow statico: una sola shadow, nessun loop.
+    func subtleGlow(color: Color = .acidGreen) -> some View {
+        modifier(SubtleGlowModifier(color: color))
     }
-    
-    func animatedBorder() -> some View {
-        modifier(AnimatedCyberBorder())
+
+    /// Bordo con gradient statico: zero animazioni per istanza.
+    func staticBorder(
+        colors: [Color] = [.acidGreen, .deepPurple, .acidGreen],
+        cornerRadius: CGFloat = 15,
+        lineWidth: CGFloat = 1.5
+    ) -> some View {
+        modifier(StaticGradientBorder(colors: colors, cornerRadius: cornerRadius, lineWidth: lineWidth))
     }
-    
+
     func glassStyle() -> some View {
         self.background(.ultraThinMaterial)
             .background(Color.cardGradient)
             .cornerRadius(15)
-    }
-    
-    func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
