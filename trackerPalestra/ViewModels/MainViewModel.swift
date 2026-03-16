@@ -55,12 +55,15 @@ final class MainViewModel: ObservableObject {
             .order(by: "date", descending: true)
             .limit(to: historyFetchLimit)
             .getDocuments { [weak self] snapshot, _ in
-                Task { @MainActor in
+                // FIX Swift 6: cattura [self] esplicita nel Task per evitare
+                // 'reference to captured var self in concurrently-executing code'
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
                     let sessions = snapshot?.documents.compactMap { doc -> WorkoutSession? in
                         try? doc.data(as: WorkoutSession.self)
                     } ?? []
-                    self?.workoutHistory = sessions
-                    self?.rebuildSessionsByDay()
+                    self.workoutHistory = sessions
+                    self.rebuildSessionsByDay()
                 }
             }
     }
@@ -213,8 +216,12 @@ final class MainViewModel: ObservableObject {
 
     func saveDraft(_ session: WorkoutSession) {
         self.activeDraft = session
+        // FIX Swift 6: encoding avviene sul MainActor (contesto corrente) prima di
+        // passare il valore già serializzato al Task.detached nonisolated,
+        // evitando 'Main actor-isolated conformance used in nonisolated context'.
+        let data = try? JSONEncoder().encode(session)
         Task.detached(priority: .utility) {
-            if let data = try? JSONEncoder().encode(session) {
+            if let data {
                 UserDefaults.standard.set(data, forKey: "workoutDraft")
             }
         }
