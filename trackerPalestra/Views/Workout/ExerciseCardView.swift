@@ -15,8 +15,6 @@ struct ExerciseCardView: View {
 
     private var lastSessionNotes: String? { cachedLastSessionData?.exerciseNotes }
 
-    /// Peso massimo corrente tra tutti i set — estratto in computed property
-    /// per evitare il timeout del type-checker quando usato in .onChange.
     private var currentMaxWeight: Double {
         exercise.sets.map { $0.weight }.max() ?? 0
     }
@@ -36,16 +34,14 @@ struct ExerciseCardView: View {
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        // FIX P1: currentMaxWeight è una computed property atomica (Double),
-        // il type-checker non deve più inferire la catena inline.
-        .onChange(of: currentMaxWeight) { newMax in
+        .onChange(of: currentMaxWeight) { _, newMax in
             exercise.isPR = newMax > cachedLastMaxWeight && newMax > 0
         }
         .onAppear {
             updateHistoryCache()
             prefillGhostWeights()
         }
-        .onChange(of: viewModel.workoutHistory.count) { _ in
+        .onChange(of: viewModel.workoutHistory.count) { _, _ in
             updateHistoryCache()
         }
     }
