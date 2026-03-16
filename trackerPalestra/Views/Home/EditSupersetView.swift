@@ -162,7 +162,7 @@ struct EditSupersetView: View {
                     Text("RIPETIZIONI").font(.caption2).fontWeight(.bold).foregroundColor(.gray)
                     Spacer()
                     Toggle("", isOn: $exStates[i].variableReps).labelsHidden().tint(.acidGreen)
-                        .onChange(of: exStates[i].variableReps) { on in
+                        .onChange(of: exStates[i].variableReps) { _, on in
                             if on { exStates[i].repsPerSet = Array(repeating: exStates[i].uniformReps, count: exStates[i].sets) }
                         }
                     Text("Diverse per serie").font(.caption2).foregroundColor(.gray)
