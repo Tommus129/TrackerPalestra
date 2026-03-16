@@ -21,7 +21,7 @@ struct WorkoutSessionView: View {
     @EnvironmentObject var activeWorkoutManager: ActiveWorkoutManager
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) var scenePhase
-    
+
     @State private var localSession: WorkoutSession
     var onSave: (WorkoutSession) -> Void
 
@@ -30,14 +30,14 @@ struct WorkoutSessionView: View {
     @State private var timerValuePreset: Int = 60
     @State private var timerEndDate: Date? = nil
     @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    
+
     @State private var showingExtraSheet = false
     @State private var showFullScreenTimer = false
     @State private var currentRestLabel: String = "RECUPERO"
 
     @State private var supersetSetTracker: [String: [Int: Int]] = [:]
-    
-    /// Task per il debounce del salvataggio bozza: annullato e ricreato ad ogni modifica.
+
+    /// Task unificato per debounce: gestisce sia il register del manager che il salvataggio bozza.
     @State private var draftSaveTask: Task<Void, Never>? = nil
 
     private let ssColor  = Color.orange
@@ -90,7 +90,7 @@ struct WorkoutSessionView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
-                        
+
                         // Data e Note
                         VStack(spacing: 12) {
                             HStack {
@@ -101,9 +101,9 @@ struct WorkoutSessionView: View {
                                     .colorScheme(.dark)
                                 Spacer()
                             }
-                            
+
                             Divider().background(Color.white.opacity(0.1))
-                            
+
                             HStack(alignment: .top) {
                                 Image(systemName: "pencil.line")
                                     .foregroundColor(.white.opacity(0.5))
@@ -166,7 +166,7 @@ struct WorkoutSessionView: View {
                                 .background(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 2, dash: [6])))
                                 .foregroundColor(.white.opacity(0.7))
                             }
-                            
+
                             Button {
                                 draftSaveTask?.cancel()
                                 activeWorkoutManager.clear()
@@ -206,7 +206,7 @@ struct WorkoutSessionView: View {
                     .zIndex(999)
             }
         }
-        .onAppear { 
+        .onAppear {
             viewModel.loadExerciseNames()
             requestNotificationPermission()
             activeWorkoutManager.register(localSession)
@@ -222,17 +222,18 @@ struct WorkoutSessionView: View {
             }
         }
         // MARK: Draft auto-save con debounce
-        // Aspetta 0.8s di inattività prima di scrivere su disco, evitando scritture continue durante la digitazione.
+        // Il register del manager avviene dopo 0.3s (debounce breve), per non copiare
+        // l'intero struct WorkoutSession in modo sincrono ad ogni keystroke.
+        // Il salvataggio su disco avviene dopo 0.8s di inattività.
         .onChange(of: localSession) { newValue in
-            activeWorkoutManager.register(newValue)
-            
             draftSaveTask?.cancel()
             draftSaveTask = Task {
-                do {
-                    try await Task.sleep(nanoseconds: 800_000_000) // 0.8s debounce
-                } catch {
-                    return // Task annullato: ignora
-                }
+                // Fase 1: aggiorna il manager dopo 0.3s (evita copia sincrona sul main thread)
+                do { try await Task.sleep(nanoseconds: 300_000_000) } catch { return }
+                await MainActor.run { activeWorkoutManager.register(newValue) }
+
+                // Fase 2: salva la bozza su disco dopo altri 0.5s (totale 0.8s)
+                do { try await Task.sleep(nanoseconds: 500_000_000) } catch { return }
                 let hasInputs = newValue.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
                 if hasInputs || !newValue.notes.isEmpty {
                     await MainActor.run { viewModel.saveDraft(newValue) }
@@ -245,14 +246,12 @@ struct WorkoutSessionView: View {
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .background:
-                // Salvataggio sincrono e immediato: l'app sta per essere sospesa/terminata.
                 draftSaveTask?.cancel()
                 let hasInputs = localSession.exercises.flatMap { $0.sets }.contains { $0.weight > 0 || $0.isCompleted }
                 if hasInputs || !localSession.notes.isEmpty {
                     viewModel.saveDraftImmediately(localSession)
                 }
             case .active:
-                // Ricalcola il timer se era in corso
                 if isTimerRunning, let endDate = timerEndDate {
                     let diff = Int(endDate.timeIntervalSince(Date()))
                     if diff > 0 {
@@ -269,7 +268,6 @@ struct WorkoutSessionView: View {
         .onReceive(timer) { _ in
             guard isTimerRunning, let endDate = timerEndDate else { return }
             let diff = Int(endDate.timeIntervalSince(Date()))
-            
             if diff > 0 {
                 remainingSeconds = diff
             } else {
@@ -305,7 +303,7 @@ struct WorkoutSessionView: View {
                     .padding(.leading, 4)
 
                 Spacer()
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: "timer").font(.system(size: 10, weight: .bold))
                     Text(formatTime(restSec)).font(.system(size: 11, weight: .bold))
@@ -322,19 +320,19 @@ struct WorkoutSessionView: View {
                         VStack(spacing: 0) {
                             if pos > 0 { Rectangle().fill(accent.opacity(0.3)).frame(width: 2, height: 20) }
                             else { Spacer().frame(height: 20) }
-                            
+
                             Text(String(UnicodeScalar(65 + pos)!))
                                 .font(.system(size: 11, weight: .black))
                                 .foregroundColor(accent)
                                 .frame(width: 24, height: 24)
                                 .background(Circle().fill(accent.opacity(0.15)))
                                 .overlay(Circle().stroke(accent.opacity(0.5), lineWidth: 1))
-                            
+
                             if pos < indices.count - 1 { Rectangle().fill(accent.opacity(0.3)).frame(width: 2) }
                             else { Spacer() }
                         }
                         .frame(width: 40)
-                        
+
                         ExerciseCardView(
                             exercise: $localSession.exercises[idx],
                             onDelete: {
@@ -386,13 +384,13 @@ struct WorkoutSessionView: View {
         timerEndDate = Date().addingTimeInterval(TimeInterval(seconds))
         isTimerRunning = true
         currentRestLabel = label.uppercased()
-        
+
         scheduleNotification(seconds: seconds, label: label)
-        
+
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showFullScreenTimer = true }
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
     }
-    
+
     private func finishTimer() {
         isTimerRunning = false
         timerEndDate = nil
@@ -414,15 +412,15 @@ struct WorkoutSessionView: View {
             content.title = "Recupero Terminato!"
             content.body = "È ora di ricominciare con \(label)."
             content.sound = UNNotificationSound.default
-            
+
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(seconds), repeats: false)
             let request = UNNotificationRequest(identifier: "restTimer", content: content, trigger: trigger)
-            
+
             center.removePendingNotificationRequests(withIdentifiers: ["restTimer"])
             center.add(request)
         }
     }
-    
+
     private func cancelNotification() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["restTimer"])
     }
@@ -484,7 +482,7 @@ struct WorkoutSessionView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            
+
             Divider().background(Color.white.opacity(0.1))
         }
         .background(Color.customBlack.opacity(0.95))

@@ -6,30 +6,18 @@ struct ExerciseCardView: View {
     var onDelete: () -> Void
     var restSeconds: Int = 60
     var onStartRest: ((Int) -> Void)? = nil
-    
+
     var accentColor: Color = .acidGreen
-    
+
     /// Passato true quando l'esercizio fa parte di un Superset/Circuito (per nascondere il badge rest ripetuto)
     var isInsideGroup: Bool = false
 
-    /// Calcola il massimo peso storico confrontando solo la workoutHistory già caricata in memoria.
-    /// Usa `lazy` tramite una computed property per non ricalcolare ad ogni render se non cambia workoutHistory.
-    private var lastMaxWeight: Double {
-        viewModel.workoutHistory
-            .flatMap { $0.exercises }
-            .filter { viewModel.normalizeName($0.name) == viewModel.normalizeName(exercise.name) }
-            .flatMap { $0.sets }
-            .map { $0.weight }
-            .max() ?? 0
-    }
+    // MARK: - Cache storico (aggiornata solo in onAppear e quando cambia workoutHistory)
+    // Evita di ricalcolare su tutta la history ad ogni render causato dalla digitazione nei TextField.
+    @State private var cachedLastMaxWeight: Double = 0
+    @State private var cachedLastSessionData: WorkoutExerciseSession? = nil
 
-    private var lastSessionData: WorkoutExerciseSession? {
-        viewModel.workoutHistory
-            .flatMap { $0.exercises }
-            .first { viewModel.normalizeName($0.name) == viewModel.normalizeName(exercise.name) }
-    }
-
-    private var lastSessionNotes: String? { lastSessionData?.exerciseNotes }
+    private var lastSessionNotes: String? { cachedLastSessionData?.exerciseNotes }
 
     @State private var showNotes = false
 
@@ -50,9 +38,34 @@ struct ExerciseCardView: View {
         }
         .onChange(of: exercise.sets.map { $0.weight }) { _ in
             let currentMax = exercise.sets.map { $0.weight }.max() ?? 0
-            exercise.isPR = currentMax > lastMaxWeight && currentMax > 0
+            exercise.isPR = currentMax > cachedLastMaxWeight && currentMax > 0
         }
-        .onAppear { prefillGhostWeights() }
+        .onAppear {
+            updateHistoryCache()
+            prefillGhostWeights()
+        }
+        // Aggiorna la cache solo quando il numero di sessioni cambia (es. dopo salvataggio),
+        // non ad ogni modifica della sessione corrente.
+        .onChange(of: viewModel.workoutHistory.count) { _ in
+            updateHistoryCache()
+        }
+    }
+
+    // MARK: - Cache Update
+
+    private func updateHistoryCache() {
+        let normalized = viewModel.normalizeName(exercise.name)
+        var foundMax: Double = 0
+        var foundSession: WorkoutExerciseSession? = nil
+        for session in viewModel.workoutHistory {
+            if let ex = session.exercises.first(where: { viewModel.normalizeName($0.name) == normalized }) {
+                if foundSession == nil { foundSession = ex }
+                let sessionMax = ex.sets.map { $0.weight }.max() ?? 0
+                if sessionMax > foundMax { foundMax = sessionMax }
+            }
+        }
+        cachedLastMaxWeight = foundMax
+        cachedLastSessionData = foundSession
     }
 
     // MARK: - Subviews
@@ -63,10 +76,10 @@ struct ExerciseCardView: View {
                 Text(exercise.name.uppercased())
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(accentColor)
-                
+
                 HStack(spacing: 8) {
-                    if lastMaxWeight > 0 {
-                        Text("BEST: \(lastMaxWeight, specifier: "%.1f") KG")
+                    if cachedLastMaxWeight > 0 {
+                        Text("BEST: \(cachedLastMaxWeight, specifier: "%.1f") KG")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white.opacity(0.8))
                             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -81,12 +94,12 @@ struct ExerciseCardView: View {
                 }
             }
             Spacer()
-            
+
             HStack(spacing: 12) {
                 if !isInsideGroup {
                     restBadge
                 }
-                
+
                 Menu {
                     Button("Aggiungi Nota", systemImage: "note.text") {
                         withAnimation { showNotes.toggle() }
@@ -120,7 +133,7 @@ struct ExerciseCardView: View {
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.03)))
                 }
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("NOTE SESSIONE").font(.system(size: 9, weight: .bold)).foregroundColor(accentColor.opacity(0.7))
                     TextEditor(text: $exercise.exerciseNotes)
@@ -155,7 +168,7 @@ struct ExerciseCardView: View {
             .foregroundColor(.white.opacity(0.4))
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
-            
+
             ForEach(exercise.sets.indices, id: \.self) { index in
                 setRowView(for: index)
             }
@@ -165,7 +178,7 @@ struct ExerciseCardView: View {
     @ViewBuilder
     private func setRowView(for index: Int) -> some View {
         let isCompleted = exercise.sets[index].isCompleted
-        
+
         HStack {
             Text("\(index + 1)")
                 .font(.system(size: 14, weight: .black, design: .monospaced))
@@ -200,7 +213,7 @@ struct ExerciseCardView: View {
                             RoundedRectangle(cornerRadius: 10)
                                 .stroke(isCompleted ? accentColor : Color.white.opacity(0.15), lineWidth: 2)
                         )
-                    
+
                     if isCompleted {
                         Image(systemName: "checkmark")
                             .font(.system(size: 16, weight: .black))
@@ -216,8 +229,8 @@ struct ExerciseCardView: View {
 
     @ViewBuilder
     private func repsTextField(for index: Int, isCompleted: Bool) -> some View {
-        let hasGhost = lastSessionData?.sets.indices.contains(index) ?? false
-        let ghostVal = hasGhost ? lastSessionData!.sets[index].reps : 0
+        let hasGhost = cachedLastSessionData?.sets.indices.contains(index) ?? false
+        let ghostVal = hasGhost ? cachedLastSessionData!.sets[index].reps : 0
         let ph = hasGhost ? "\(ghostVal)" : "0"
 
         TextField(ph,
@@ -236,8 +249,8 @@ struct ExerciseCardView: View {
 
     @ViewBuilder
     private func weightTextField(for index: Int, isCompleted: Bool) -> some View {
-        let hasGhost = lastSessionData?.sets.indices.contains(index) ?? false
-        let ghostVal = hasGhost ? lastSessionData!.sets[index].weight : 0.0
+        let hasGhost = cachedLastSessionData?.sets.indices.contains(index) ?? false
+        let ghostVal = hasGhost ? cachedLastSessionData!.sets[index].weight : 0.0
         let ph = hasGhost ? "\(String(format: "%.1f", ghostVal))" : "0.0"
 
         TextField(ph,
@@ -267,13 +280,13 @@ struct ExerciseCardView: View {
                 .padding(.horizontal, 12)
                 .background(RoundedRectangle(cornerRadius: 8).fill(accentColor.opacity(0.1)))
             }
-            
+
             Spacer()
-            
+
             if exercise.sets.count > 1 {
-                Button(action: { 
-                    withAnimation { 
-                        _ = exercise.sets.popLast() 
+                Button(action: {
+                    withAnimation {
+                        _ = exercise.sets.popLast()
                     }
                 }) {
                     Text("RIMUOVI SET")
@@ -318,7 +331,7 @@ struct ExerciseCardView: View {
     }
 
     private func prefillGhostWeights() {
-        guard let lastData = lastSessionData else { return }
+        guard let lastData = cachedLastSessionData else { return }
         for index in exercise.sets.indices {
             if index < lastData.sets.count {
                 let ghostSet = lastData.sets[index]
