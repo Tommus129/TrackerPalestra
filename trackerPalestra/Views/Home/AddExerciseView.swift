@@ -132,9 +132,8 @@ struct AddExerciseView: View {
                         .padding(.horizontal, 14).padding(.vertical, 10).background(fieldBg)
                     }
                 }
-                .onChange(of: variableReps) { on in
+                .onChange(of: variableReps) { _, on in
                     if on {
-                        // Allinea la lunghezza dell'array a 'sets' mantenendo i vecchi valori, o usa uniformReps per i nuovi
                         if repsPerSet.count < sets {
                             let diff = sets - repsPerSet.count
                             repsPerSet.append(contentsOf: Array(repeating: uniformReps, count: diff))
