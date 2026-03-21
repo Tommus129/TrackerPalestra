@@ -39,9 +39,22 @@
 		07D07D552F2816B800CC07DC /* trackerPalestraUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = trackerPalestraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		070A4ED32F6839CE0030538C /* Exceptions for "trackerPalestra" folder in "trackerPalestra" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 07D07D3D2F2816B600CC07DC /* trackerPalestra */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		07D07D402F2816B600CC07DC /* trackerPalestra */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				070A4ED32F6839CE0030538C /* Exceptions for "trackerPalestra" folder in "trackerPalestra" target */,
+			);
 			path = trackerPalestra;
 			sourceTree = "<group>";
 		};
@@ -428,6 +441,7 @@
 				DEVELOPMENT_TEAM = UX6Q9LGA34;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = trackerPalestra/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -461,6 +475,7 @@
 				DEVELOPMENT_TEAM = UX6Q9LGA34;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = trackerPalestra/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

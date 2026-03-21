@@ -30,8 +30,7 @@ struct WorkoutSessionView: View {
     @State private var timerValuePreset: Int = 60
     @State private var timerEndDate: Date? = nil
 
-    @State private var timerPublisher = Timer.publish(every: 1, on: .main, in: .common)
-    @State private var timerCancellable: Cancellable? = nil
+    @State private var timerTask: Task<Void, Never>? = nil
 
     @State private var showingExtraSheet = false
     @State private var showFullScreenTimer = false
@@ -146,6 +145,13 @@ struct WorkoutSessionView: View {
                                         startRest(seconds: seconds, label: localSession.exercises[idx].name)
                                     }
                                 )
+                                // FIX BUG 3: .id stabile basato sull'exerciseId (non sull'indice).
+                                // Quando si elimina un esercizio, SwiftUI riciclerebbe la card
+                                // esistente aggiornando solo il binding (con indice sfasato),
+                                // mantenendo il vecchio @State cachedLastMaxWeight → BEST e PR errati.
+                                // Con .id univoco, la card viene distrutta e ricreata → onAppear
+                                // → updateHistoryCache() riparte da zero con il nome corretto.
+                                .id(localSession.exercises[idx].exerciseId)
                                 .padding(.horizontal, 16)
                             case .superset(let indices, let gid, let ssName, let isCircuit):
                                 supersetGroupView(indices: indices, groupId: gid, name: ssName, isCircuit: isCircuit)
@@ -260,16 +266,6 @@ struct WorkoutSessionView: View {
                 break
             }
         }
-        .onReceive(timerPublisher) { _ in
-            guard isTimerRunning, let endDate = timerEndDate else { return }
-            let diff = Int(endDate.timeIntervalSince(Date()))
-            if diff > 0 {
-                remainingSeconds = diff
-            } else {
-                remainingSeconds = 0
-                finishTimer()
-            }
-        }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showFullScreenTimer)
     }
 
@@ -347,6 +343,8 @@ struct WorkoutSessionView: View {
                             accentColor: accent,
                             isInsideGroup: true
                         )
+                        // FIX BUG 3: stesso fix anche per le card dentro i superset
+                        .id(localSession.exercises[idx].exerciseId)
                     }
                 }
             }
@@ -358,13 +356,27 @@ struct WorkoutSessionView: View {
     // MARK: - Timer logic
 
     private func startTimer() {
-        guard timerCancellable == nil else { return }
-        timerCancellable = timerPublisher.connect()
+        guard timerTask == nil else { return }
+        timerTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { break }
+                guard isTimerRunning, let endDate = timerEndDate else { break }
+                let diff = Int(endDate.timeIntervalSince(Date()))
+                if diff > 0 {
+                    remainingSeconds = diff
+                } else {
+                    remainingSeconds = 0
+                    finishTimer()
+                    break
+                }
+            }
+        }
     }
 
     private func stopTimer() {
-        timerCancellable?.cancel()
-        timerCancellable = nil
+        timerTask?.cancel()
+        timerTask = nil
     }
 
     private func handleSupersetSetCompleted(groupId: String, exIdx: Int, allIndices: [Int], restSeconds: Int, label: String) {

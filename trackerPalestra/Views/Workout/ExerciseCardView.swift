@@ -44,6 +44,15 @@ struct ExerciseCardView: View {
         .onChange(of: viewModel.workoutHistory.count) { _, _ in
             updateHistoryCache()
         }
+        // FIX BUG 2: quando SwiftUI riusa questa card per un esercizio diverso
+        // (es. dopo eliminazione di un esercizio precedente), il nome del binding
+        // cambia ma onAppear non scatta di nuovo. Aggiornando la cache sul cambio
+        // di nome si garantisce che BEST e ghost weights siano sempre dell'esercizio
+        // corretto, evitando anche PR falsi.
+        .onChange(of: exercise.name) { _, _ in
+            updateHistoryCache()
+            prefillGhostWeights()
+        }
     }
 
     // MARK: - Cache Update
